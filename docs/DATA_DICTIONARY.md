@@ -67,3 +67,41 @@ Only sourced hours, in OSM `opening_hours` syntax, with confidence, source and v
 
 ### place_import_batches
 One row per import: source file, OSM timestamp, accepted/rejected/merged counts, full report JSON.
+
+## Users, trips and collaboration (Flyway `V4__trips_and_collaboration.sql`)
+
+### users
+| Column | Meaning |
+|---|---|
+| username | Lowercase, 3–40 characters `[a-z0-9_.-]`, unique |
+| password_hash | BCrypt. The plain password is never stored or returned |
+| display_name | Optional |
+
+### trips
+| Column | Meaning |
+|---|---|
+| owner_id | The owner has full control |
+| kind | ITINERARY or ROAD_TRIP |
+| request_json | Planner input. Carries the user's edits (keepStops, avoid, mustVisit, fillFreeTime) |
+| result_json | Last planner result; null until the trip is first planned |
+| version | Optimistic lock. Every itinerary or title change increments it, and a stale version gets 409 |
+| archived | Set when the owner deletes the trip; archived trips are invisible to everyone |
+
+### trip_members
+`(trip_id, user_id)` primary key and `role` (EDITOR or VIEWER). The owner is not a member row.
+
+### trip_share_links
+| Column | Meaning |
+|---|---|
+| token_hash | SHA-256 of a 256-bit random token. The token itself is shown once and never stored |
+| expires_at | Optional |
+| revoked_at | Set on revocation. Revoked and expired links return 404 |
+
+### activity_suggestions / activity_votes
+Each suggestion links a trip to a catalogue place, with an optional `day_number` and note. A vote is +1 or −1, and the primary key `(suggestion_id, user_id)` allows one vote per person.
+
+### trip_expenses
+Each row records who paid, a description and an amount (> 0, INR). Expenses are split equally among the owner and all members.
+
+### trip_change_history
+Each row records who made a change, an action code, a summary and the trip version after the change. Rows are ordered by an identity id, so changes made in the same millisecond keep their order.

@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The home page offers three modes (plan today, multi-day trip, road trip) and preloaded demo scenarios that work without any API keys.
+Open http://localhost:5173. Create an account with **Sign in** to save trips, invite companions (editor or viewer) and share a read-only link. Set `DEMO_PASSWORD` to also get demo users asha, ravi and meera. The home page offers three modes (plan today, multi-day trip, road trip) and preloaded demo scenarios that work without any API keys.
 
 Configuration comes from environment variables. See [`.env.example`](.env.example). No API keys are needed for the core workflow.
 

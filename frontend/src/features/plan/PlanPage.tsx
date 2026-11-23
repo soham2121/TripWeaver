@@ -4,12 +4,14 @@ import { itinerariesApi } from '../../api/itineraries'
 import { placesApi } from '../../api/places'
 import { toProblem, type Problem } from '../../api/client'
 import { ProblemNotice } from '../../components/ProblemNotice'
-import type { Itinerary, ItineraryRequest, Pace, Stop, Transport } from '../../types/itinerary'
+import type { Itinerary, ItineraryRequest, Pace, Transport } from '../../types/itinerary'
 import { INTERESTS, type Suggestion } from '../../types/place'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
 import { DEFAULT_PLAN, PLAN_DEMOS, type PlanForm } from '../demos'
-import { ItineraryView, type StopActions } from './ItineraryView'
+import { SaveTrip } from '../trips/SaveTrip'
+import { applyEdit, type Edit } from './edits'
+import { ItineraryView } from './ItineraryView'
 
 const STEPS = ['Interests', 'Where and when', 'Travel and budget']
 
@@ -61,8 +63,6 @@ function toRequest(f: PlanForm): ItineraryRequest {
   }
 }
 
-type Edits = Pick<ItineraryRequest, 'keepStops' | 'fillFreeTime'>
-
 export function PlanPage() {
   const [params] = useSearchParams()
   const today = params.get('mode') === 'today'
@@ -79,10 +79,9 @@ export function PlanPage() {
   const [baseQuery, setBaseQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Itinerary | null>(null)
+  /** The request behind the plan on screen; it carries earlier edits (avoid, must-visit). */
+  const [lastRequest, setLastRequest] = useState<ItineraryRequest | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
-  const [avoid, setAvoid] = useState<string[]>([])
-  const [mustVisit, setMustVisit] = useState<string[]>([])
-  const [locked, setLocked] = useState<Set<string>>(new Set())
 
   const set = <K extends keyof PlanForm>(k: K, v: PlanForm[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -92,6 +91,7 @@ export function PlanPage() {
     try {
       const r = await itinerariesApi.generate(req)
       setResult(r.itinerary)
+      setLastRequest(req)
     } catch (e) {
       setProblem(toProblem(e, 'Could not reach the planner.'))
     } finally {
@@ -101,9 +101,6 @@ export function PlanPage() {
 
   /** A fresh plan from the wizard clears earlier edits. */
   const generate = (f = form) => {
-    setAvoid([])
-    setMustVisit([])
-    setLocked(new Set())
     setResult(null)
     void run(toRequest(f))
   }
@@ -117,53 +114,8 @@ export function PlanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const stopsWithDay = () =>
-    (result?.days ?? []).flatMap((d) => d.stops.map((s) => ({ placeId: s.place.id, day: d.day })))
-
-  const edit = (edits: Edits, nextAvoid = avoid, nextMust = mustVisit) => {
-    setAvoid(nextAvoid)
-    setMustVisit(nextMust)
-    void run({ ...toRequest(form), ...edits, avoid: nextAvoid, mustVisit: nextMust })
-  }
-
-  const actions: StopActions = {
-    locked,
-    busy: loading,
-    toggleLock: (s: Stop) =>
-      setLocked((l) => {
-        const n = new Set(l)
-        if (n.has(s.place.id)) n.delete(s.place.id)
-        else n.add(s.place.id)
-        return n
-      }),
-    remove: (s) =>
-      edit(
-        { keepStops: stopsWithDay().filter((k) => k.placeId !== s.place.id), fillFreeTime: false },
-        [...avoid, s.place.id],
-      ),
-    replace: (s) =>
-      edit(
-        { keepStops: stopsWithDay().filter((k) => k.placeId !== s.place.id), fillFreeTime: true },
-        [...avoid, s.place.id],
-      ),
-    move: (s, day) =>
-      edit({
-        keepStops: stopsWithDay().map((k) => (k.placeId === s.place.id ? { ...k, day } : k)),
-        fillFreeTime: false,
-      }),
-    replan: () =>
-      edit({
-        keepStops: stopsWithDay().filter((k) => locked.has(k.placeId)),
-        fillFreeTime: true,
-      }),
-    addMustVisit: (sg: Suggestion) => {
-      if (sg.type !== 'PLACE' || !sg.placeId) return
-      edit(
-        { keepStops: stopsWithDay(), fillFreeTime: false },
-        avoid.filter((a) => a !== sg.placeId),
-        [...new Set([...mustVisit, sg.placeId])],
-      )
-    },
+  const onEdit = (e: Edit) => {
+    if (result && lastRequest) void run(applyEdit(lastRequest, result, e))
   }
 
   const pickBase = async (s: Suggestion) => {
@@ -433,9 +385,20 @@ export function PlanPage() {
             move stops and replan.
           </p>
         )}
-        {result && (
-          <div className={loading ? 'opacity-60' : undefined}>
-            <ItineraryView it={result} base={form.base} actions={actions} />
+        {result && lastRequest && (
+          <div className={`space-y-3 ${loading ? 'opacity-60' : ''}`}>
+            <SaveTrip
+              kind="ITINERARY"
+              request={lastRequest}
+              result={result}
+              defaultTitle={`${result.days.length}-day trip from ${lastRequest.baseName ?? 'Goa'}`}
+            />
+            <ItineraryView
+              it={result}
+              base={{ lat: lastRequest.baseLat, lon: lastRequest.baseLon }}
+              onEdit={onEdit}
+              busy={loading}
+            />
           </div>
         )}
       </section>

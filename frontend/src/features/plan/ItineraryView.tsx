@@ -4,36 +4,49 @@ import { ConfidenceBadge } from '../../components/ConfidenceBadge'
 import { ProviderNotice } from '../../components/ProblemNotice'
 import type { MapPoint } from '../../maps/PlaceMap'
 import type { Day, Itinerary, Stop, Workload } from '../../types/itinerary'
-import type { Confidence, Suggestion } from '../../types/place'
+import type { Confidence } from '../../types/place'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
+import type { Edit } from './edits'
 
 const PlaceMap = lazy(() => import('../../maps/PlaceMap'))
 
 const hhmm = (t: string) => t.slice(0, 5)
 
-export interface StopActions {
+interface StopActions {
   locked: Set<string>
   busy: boolean
   toggleLock: (s: Stop) => void
-  remove: (s: Stop) => void
-  replace: (s: Stop) => void
-  move: (s: Stop, day: number) => void
-  replan: () => void
-  addMustVisit: (s: Suggestion) => void
+  edit: (e: Edit) => void
 }
 
+/** A generated itinerary. Without onEdit it is read-only (viewers, shared links). */
 export function ItineraryView({
   it,
   base,
-  actions,
+  onEdit,
+  busy = false,
 }: {
   it: Itinerary
   base: { lat: number; lon: number }
-  actions: StopActions
+  onEdit?: (e: Edit) => void
+  busy?: boolean
 }) {
   const [dayIdx, setDayIdx] = useState(0)
   const [mustQuery, setMustQuery] = useState('')
+  const [locked, setLocked] = useState<Set<string>>(new Set())
+  const actions: StopActions | undefined = onEdit && {
+    locked,
+    busy,
+    edit: onEdit,
+    toggleLock: (s) =>
+      setLocked((l) => {
+        const n = new Set(l)
+        if (n.has(s.place.id)) n.delete(s.place.id)
+        else n.add(s.place.id)
+        return n
+      }),
+  }
   const day = it.days[Math.min(dayIdx, it.days.length - 1)]
   return (
     <div className="space-y-3 text-sm">
@@ -109,34 +122,37 @@ export function ItineraryView({
         </section>
       </div>
 
-      <section className="flex flex-wrap items-end gap-2 rounded border border-zinc-200 bg-white p-3">
-        <div className="min-w-64 flex-1">
-          <span className="text-xs text-zinc-600">Add a must-visit place</span>
-          <Autocomplete
-            value={mustQuery}
-            onChange={setMustQuery}
-            onPick={(s) => {
-              setMustQuery('')
-              actions.addMustVisit(s)
-            }}
-            placesOnly
-            label="Add a must-visit place"
-            placeholder="Search a place to include"
-          />
-        </div>
-        <button
-          type="button"
-          disabled={actions.busy}
-          onClick={actions.replan}
-          className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50"
-        >
-          Replan, keeping locked stops
-        </button>
-        <p className="w-full text-xs text-zinc-500">
-          Lock stops you want to keep. Remove takes a stop out without a replacement; replace asks
-          for another suggestion. Every edit re-runs the planner, so times update.
-        </p>
-      </section>
+      {actions && (
+        <section className="flex flex-wrap items-end gap-2 rounded border border-zinc-200 bg-white p-3">
+          <div className="min-w-64 flex-1">
+            <span className="text-xs text-zinc-600">Add a must-visit place</span>
+            <Autocomplete
+              value={mustQuery}
+              onChange={setMustQuery}
+              onPick={(s) => {
+                setMustQuery('')
+                if (s.type === 'PLACE' && s.placeId)
+                  actions.edit({ kind: 'must', placeId: s.placeId })
+              }}
+              placesOnly
+              label="Add a must-visit place"
+              placeholder="Search a place to include"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={actions.busy}
+            onClick={() => actions.edit({ kind: 'replan', locked: [...locked] })}
+            className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50"
+          >
+            Replan, keeping locked stops
+          </button>
+          <p className="w-full text-xs text-zinc-500">
+            Lock stops you want to keep. Remove takes a stop out without a replacement; replace asks
+            for another suggestion. Every edit re-runs the planner, so times update.
+          </p>
+        </section>
+      )}
 
       <div role="tablist" className="flex flex-wrap gap-1">
         {it.days.map((d, i) => (
@@ -202,7 +218,7 @@ function DayView({
   day: Day
   days: number
   base: { lat: number; lon: number }
-  actions: StopActions
+  actions?: StopActions
 }) {
   const points = useMemo<MapPoint[]>(
     () => [
@@ -306,10 +322,10 @@ function StopItem({
   s: Stop
   day: number
   days: number
-  actions: StopActions
+  actions?: StopActions
 }) {
   const name = s.place.name
-  const locked = actions.locked.has(s.place.id)
+  const locked = actions?.locked.has(s.place.id) ?? false
   return (
     <li className={`rounded p-2 ${locked ? 'bg-teal-50' : 'bg-zinc-50'}`}>
       <div className="text-xs text-zinc-500">
@@ -330,50 +346,54 @@ function StopItem({
         {s.kind === 'MUST_VISIT' && <span className="text-teal-800">· must-visit</span>}
       </div>
       <div className="text-xs text-zinc-500">{s.reason}</div>
-      <div className="mt-1 flex flex-wrap gap-1">
-        <button
-          type="button"
-          aria-label={`Lock ${name}`}
-          aria-pressed={locked}
-          className={btn}
-          onClick={() => actions.toggleLock(s)}
-        >
-          {locked ? 'Locked' : 'Lock'}
-        </button>
-        <button
-          type="button"
-          aria-label={`Remove ${name}`}
-          disabled={actions.busy}
-          className={btn}
-          onClick={() => actions.remove(s)}
-        >
-          Remove
-        </button>
-        <button
-          type="button"
-          aria-label={`Replace ${name}`}
-          disabled={actions.busy}
-          className={btn}
-          onClick={() => actions.replace(s)}
-        >
-          Replace
-        </button>
-        {days > 1 && (
-          <select
-            aria-label={`Move ${name} to day`}
-            value={day}
-            disabled={actions.busy}
-            onChange={(e) => actions.move(s, Number(e.target.value))}
-            className="rounded text-xs ring-1 ring-zinc-300"
+      {actions && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          <button
+            type="button"
+            aria-label={`Lock ${name}`}
+            aria-pressed={locked}
+            className={btn}
+            onClick={() => actions.toggleLock(s)}
           >
-            {Array.from({ length: days }, (_, i) => (
-              <option key={i} value={i + 1}>
-                Day {i + 1}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
+            {locked ? 'Locked' : 'Lock'}
+          </button>
+          <button
+            type="button"
+            aria-label={`Remove ${name}`}
+            disabled={actions.busy}
+            className={btn}
+            onClick={() => actions.edit({ kind: 'remove', placeId: s.place.id })}
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            aria-label={`Replace ${name}`}
+            disabled={actions.busy}
+            className={btn}
+            onClick={() => actions.edit({ kind: 'replace', placeId: s.place.id })}
+          >
+            Replace
+          </button>
+          {days > 1 && (
+            <select
+              aria-label={`Move ${name} to day`}
+              value={day}
+              disabled={actions.busy}
+              onChange={(e) =>
+                actions.edit({ kind: 'move', placeId: s.place.id, day: Number(e.target.value) })
+              }
+              className="rounded text-xs ring-1 ring-zinc-300"
+            >
+              {Array.from({ length: days }, (_, i) => (
+                <option key={i} value={i + 1}>
+                  Day {i + 1}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
     </li>
   )
 }

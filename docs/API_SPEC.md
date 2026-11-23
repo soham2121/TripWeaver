@@ -215,3 +215,54 @@ Errors:
   - No place to stay reachable within the day's limits.
   - Late arrival at an overnight waypoint.
   - Arrival after `arriveBy`.
+
+## Accounts (Phase 10)
+
+Username + password with a session cookie (`JSESSIONID`, HttpOnly, SameSite=Lax, 12 h). Send requests with `credentials: 'include'`.
+
+| Method | Path | Body | Result |
+|---|---|---|---|
+| POST | `/auth/register` | `{username, password, displayName?}` | 201 `{id, username, displayName}`, signed in |
+| POST | `/auth/login` | `{username, password}` | 200 user. 401 `BAD_CREDENTIALS`, the same answer for an unknown user or a wrong password. 429 `RATE_LIMITED` |
+| POST | `/auth/logout` | | 204 |
+| GET | `/auth/me` | | 200 user, or 401 `UNAUTHENTICATED` |
+
+Validation: `BAD_USERNAME` (3–40 characters `[a-z0-9_.-]`, case-insensitive), `BAD_PASSWORD` (8–100 characters), and 409 `USERNAME_TAKEN`.
+
+## Trips and collaboration (Phase 10)
+
+Every `/trips/**` call needs a session; without one it gets 401 `UNAUTHENTICATED`. The caller's role on the trip is checked on every operation:
+- A trip you are not on returns 404, so trip ids reveal nothing.
+- Insufficient role returns 403 `FORBIDDEN`.
+
+| Method | Path | Minimum role | Notes |
+|---|---|---|---|
+| POST | `/trips` | signed in | `{title, kind: ITINERARY or ROAD_TRIP, request, result?}`. Returns 201 TripView with version 0 |
+| GET | `/trips` | signed in | Trips you own or are a member of: `{id, title, kind, role, ownerUsername, version, updatedAt}` |
+| GET | `/trips/{id}` | viewer | TripView: `{id, title, kind, role, owner, members[], version, request, result, createdAt, updatedAt}` |
+| PATCH | `/trips/{id}` | editor; owner for `title` | `{version, title?, request?, result?}` |
+| POST | `/trips/{id}/generate` | editor | `{version, request?}`. Runs the planner on `request` (or the saved request) and saves both |
+| DELETE | `/trips/{id}` | owner | Archives the trip. Returns 204 |
+| POST | `/trips/{id}/members` | owner | `{username, role: EDITOR or VIEWER}`. Returns 201. Errors: 404 for an unknown user, 400 `OWNER_IS_MEMBER`, 400 `BAD_ROLE`, 409 `ALREADY_MEMBER` |
+| PATCH | `/trips/{id}/members/{userId}` | owner | `{role}` |
+| DELETE | `/trips/{id}/members/{userId}` | owner | Returns 204 |
+| POST | `/trips/{id}/share-links` | owner | `{expiresInHours?}` (1..8760). Returns 201 `{id, token, createdAt, expiresAt}`; the token is shown only here |
+| GET | `/trips/{id}/share-links` | owner | `[{id, createdAt, expiresAt, revokedAt, active}]`, without tokens |
+| DELETE | `/trips/{id}/share-links/{linkId}` | owner | Revokes the link. Returns 204 |
+| GET | `/shared/{token}` | public | `{title, kind, result, updatedAt}` only: no request, no members. An invalid, revoked or expired token gets 404 `SHARE_LINK_INVALID`. Rate-limited: 60 requests per minute per IP, then 429 |
+| POST | `/trips/{id}/suggestions` | editor | `{placeId, day?, note?}`. Returns 201 Suggestion |
+| GET | `/trips/{id}/suggestions` | viewer | `[{id, placeId, placeName, day, note, suggestedBy, createdAt, up, down, score, myVote}]`, highest score first |
+| POST | `/trips/{id}/suggestions/{sid}/votes` | editor | `{value: 1 or -1}`. 201 for a new vote, 200 for a changed vote, 409 `DUPLICATE_VOTE` for the same vote again |
+| GET | `/trips/{id}/history` | viewer | `[{action, summary, username, version, at}]`, newest first, at most 200 |
+| POST | `/trips/{id}/expenses` | editor | `{description, amount, paidBy?}`. `paidBy` defaults to you and must be on the trip |
+| GET | `/trips/{id}/expenses` | viewer | `{items[], total, perPerson, balances[{userId, username, paid, share, balance}]}`. A positive balance means others owe this person |
+
+**Optimistic locking:**
+- PATCH and generate need the `version` the edit is based on; without it they return 400 `VERSION_REQUIRED`.
+- A stale version returns 409 `VERSION_CONFLICT` with `details.currentVersion`, and nothing is overwritten.
+
+**History actions:** CREATED, RENAMED, ITINERARY_UPDATED, REPLANNED, ARCHIVED, MEMBER_ADDED, MEMBER_ROLE_CHANGED, MEMBER_REMOVED, SHARE_CREATED, SHARE_REVOKED, SUGGESTED, EXPENSE_ADDED.
+
+**Not built:**
+- The separate `/replan`, `/itinerary` and `/stops` endpoints in IMPLEMENTATION 10.2, and `/road-trips/{id}/detours` and `/segments`. `POST /trips/{id}/generate` with an edited `request` covers these; the UI builds the request as described in D32.
+- Accepting a suggestion is done by adding the place as a must-visit ("add to plan").

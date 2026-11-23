@@ -14,7 +14,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 7 — Route ordering and navigation | Passed |
 | 8 — Road-trip planner | Passed |
 | 9 — Itinerary UI and editing | Passed |
-| 10 — Sharing and collaboration | Not started |
+| 10 — Sharing and collaboration | Passed |
 | 11 — Optional enrichment | Not started |
 | 12 — Benchmarks and audit | Not started |
 | 13 — Submission package | Not started |
@@ -330,3 +330,70 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - Results explain themselves: provider, labels, coverage gaps, budget and workload.
 - Results can be edited.
 - The demos need no provider credentials.
+
+## Phase 10 report — Shared trips and collaboration (passed)
+
+**Checklist:** all 12 items done, including shared expenses (see `IMPLEMENTATION.md`).
+- **Accounts:** username + password, BCrypt, session cookie (HttpOnly, SameSite=Lax). Pages to sign in or create an account, plus sign out (D34).
+- **Trips and roles:** owner, editor and viewer roles, checked on the backend on every call. Non-members get 404 (D35).
+- **Read-only link:** 256-bit token, stored hashed. It can expire and be revoked. The public `/shared/{token}` page leaves out the request and members, and is rate-limited (60 per minute per IP).
+- **Members:** the owner adds a member by username with a role, changes roles and removes members.
+- **Suggestions and votes:** one vote per person; the same vote again returns 409, the opposite vote changes it.
+- **Change history:** who did what, at which trip version.
+- **Optimistic locking:** every edit sends its version. A stale edit returns 409 `VERSION_CONFLICT` with the current version; the UI loads the latest trip and says why.
+- **Shared expenses:** an equal split with a balance per person.
+- **Frontend:**
+  - "Save trip" on the itinerary and road-trip results.
+  - My trips page.
+  - Trip page: edits go through `/trips/{id}/generate` with the version they were based on.
+    - Owner controls: rename, delete, people, share links.
+    - Suggestions with voting and "add to plan", expenses, history.
+    - Polls every 15 s.
+  - Public shared page.
+  - Itinerary edit logic moved to `plan/edits.ts`, shared by the plan page and the trip page.
+
+**Commands and results:**
+- `./mvnw -o test spotless:check`: 206 tests, 0 failures. New:
+  - `AuthApiTest` (4): register, login, me and logout; BCrypt; the same error for unknown and wrong; validation; 401 without a session.
+  - `TripCollaborationApiTest` (9):
+    - Owner, editor, viewer and outsider permissions.
+    - Member rules.
+    - Share link is read-only, unguessable, revocable and expires.
+    - Stale edit returns a conflict.
+    - Suggestions and the duplicate-vote rule.
+    - History order.
+    - Expense split.
+    - Generate with a version check.
+    - Rate limit.
+- `npm test`: 34 passed. New:
+  - `TripPage.test` (6): owner share and revoke; viewer read-only; editor edit with version; conflict reload; votes and expenses; shared page and dead link.
+  - `LoginPage.test` (3).
+  - `PlanPage.test`: save trip and the sign-in prompt (2).
+- `tsc -b`, `npm run build`, `prettier --check`: clean.
+
+**Live check:** real PostgreSQL (V4 migrated), OSRM, through the Vite proxy on :5173.
+
+| Check | Result |
+|---|---|
+| Register | 201, `JSESSIONID` HttpOnly, SameSite=Lax |
+| Wrong password | 401 |
+| `/trips` with no session | 401 |
+| Owner generates a 2-day plan | v1, 5 and 5 stops, OSRM |
+| Viewer GET / PATCH | 200 / 403 |
+| Editor renames / creates a share link | 403 / 403 |
+| Editor removes a stop | v2, 10 → 9 stops |
+| Owner sends a stale v1 | 409 `VERSION_CONFLICT`, current version 2 |
+| Shared link without login | 200, no request or members |
+| Shared link after revoke | 404 |
+| Vote / same vote / opposite vote | 201 / 409 / 200 |
+| ₹2,700 split three ways | +1800 / −900 / −900 |
+| History | Full sequence |
+| Logout | Logout 204, then `/me` 401 |
+
+**Browser check not done:** the Chrome extension was still not connected. The UI was verified by the component tests and the API checks above.
+
+**Known limits:**
+- Each IP gets its own in-memory rate-limit window, so the limit applies per backend instance.
+- No email invitations; members are added by username.
+- Updates arrive by polling, not WebSockets.
+- Deleting a trip archives it; there is no restore screen.

@@ -210,3 +210,33 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
   - Day tabs, each with a map, the timeline including meals and travel, the ordering evidence and Google Maps links.
 - **Road trip page:** fixed stops in the user's order, each with optional overnight and stop minutes. Place search covers the Konkan and Goa catalogues. Results show segments and detours, a timeline per day, the overnight with its confidence badge, and the budget.
 - **No charting library:** workload bars are plain CSS with `role="meter"`.
+
+## D34 — Sign-in: session cookie, no CSRF token
+- **Login:** `POST /auth/login` checks a BCrypt hash. It stores an `AppUser` (id, username, display name; never the hash) in the session's security context and changes the session id to prevent session fixation.
+- **Session cookie:** HttpOnly, SameSite=Lax, 12-hour timeout.
+- **CSRF:** Spring's CSRF tokens stay off. The API accepts JSON only, and a SameSite=Lax cookie is not sent on cross-site POST, PATCH or DELETE.
+- **Wrong credentials:** an unknown username and a wrong password both get the same 401 `BAD_CREDENTIALS`. The password check runs against a dummy hash for unknown users, so both cases take the same time.
+- **Rate limit:** `/auth/login` and `/shared/**` are limited to 60 requests per minute per IP, then 429. The window is fixed and kept in memory, so it does not cover more than one backend instance.
+- **Demo users:** asha, ravi and meera are created only when `DEMO_PASSWORD` is set. No password is stored in the repository.
+- **Cost if wrong:** without CSRF tokens, a browser that ignores SameSite could be tricked into cross-site requests. Mitigation if needed: enable Spring's cookie CSRF token and send the header from `api()`.
+
+## D35 — Collaboration model
+- **Roles:**
+
+  | Role | Can |
+  |---|---|
+  | Owner | Everything: rename, delete (archive), manage members, create and revoke share links |
+  | Editor | Change the plan (PATCH or generate), suggest places, vote, add expenses |
+  | Viewer | Read the trip, suggestions, expenses and history |
+
+  Roles are checked in `TripService` on every call. Someone who is not on a trip gets 404, not 403.
+- **Share links:**
+  - The token is 256 bits from `SecureRandom`, base64url (43 characters). Only its SHA-256 is stored.
+  - Links can be revoked and can expire.
+  - The public view leaves out the planner request (which contains the owner's base location) and the member list.
+- **Optimistic locking:** `UPDATE ... SET version = version + 1 WHERE id = ? AND version = ?`. When no row matches, the call returns 409 with the current version. The UI then shows the message and loads the latest trip, so nothing is silently overwritten.
+- **Votes:** at most one per person per suggestion, enforced by the primary key. The same vote again returns 409 `DUPLICATE_VOTE`; the opposite vote changes it.
+- **Expenses:** split equally among everyone on the trip (owner and members). Balance = paid − share.
+- **Live updates:** the trip page polls every 15 s and shows a companion's newer version when it is idle. No WebSockets (plan 8.2 says polling is enough for the MVP).
+- **Storage:** trips store the planner request and result as JSON text. Planning stays pure, and a saved trip can be planned again with the stored request.
+- **Column name:** `activity_suggestions.day_number`, because `day` is reserved in H2, the test database.

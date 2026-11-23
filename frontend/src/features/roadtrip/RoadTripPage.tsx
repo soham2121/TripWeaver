@@ -18,6 +18,7 @@ import type {
 } from '../../types/roadtrip'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
+import { SaveTrip } from '../trips/SaveTrip'
 
 const PlaceMap = lazy(() => import('../../maps/PlaceMap'))
 
@@ -151,6 +152,7 @@ export function RoadTripPage() {
   const [stopQuery, setStopQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<RoadTrip | null>(null)
+  const [lastRequest, setLastRequest] = useState<RoadTripRequest | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -161,8 +163,10 @@ export function RoadTripPage() {
     setLoading(true)
     setProblem(null)
     try {
-      const r = await roadTripsApi.plan(toRequest(f))
+      const req = toRequest(f)
+      const r = await roadTripsApi.plan(req)
       setResult(r.roadTrip)
+      setLastRequest(req)
     } catch (e) {
       setResult(null)
       setProblem(toProblem(e, 'Could not reach the planner.'))
@@ -416,7 +420,17 @@ export function RoadTripPage() {
             and limited.
           </p>
         )}
-        {result && <RoadTripView trip={result} />}
+        {result && lastRequest && (
+          <div className="space-y-3">
+            <SaveTrip
+              kind="ROAD_TRIP"
+              request={lastRequest}
+              result={result}
+              defaultTitle={`${lastRequest.origin.name} to ${lastRequest.destination.name}`}
+            />
+            <RoadTripView trip={result} />
+          </div>
+        )}
       </section>
     </div>
   )
@@ -425,7 +439,7 @@ export function RoadTripPage() {
 const dt = (s: string) => s.replace('T', ' ').slice(0, 16)
 const hours = (m: number) => `${Math.floor(m / 60)} h ${m % 60} min`
 
-function RoadTripView({ trip }: { trip: RoadTrip }) {
+export function RoadTripView({ trip }: { trip: RoadTrip }) {
   const points = useMemo<MapPoint[]>(() => {
     const p: MapPoint[] = []
     trip.segments.forEach((s, i) => {

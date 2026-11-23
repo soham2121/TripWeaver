@@ -1,9 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import { mockApi } from '../../test/mockApi'
 import { itineraryResponse } from '../../test/planFixtures'
+import { AuthContext } from '../auth/auth'
 import { PlanPage } from './PlanPage'
 
 const mapProps: { points: unknown[]; line?: unknown[] }[] = []
@@ -200,4 +201,45 @@ test('shows infeasible-plan conflicts and relaxations', async () => {
 test('needs at least one interest', () => {
   renderAt()
   expect(screen.getByRole('button', { name: /generate plan/i })).toBeDisabled()
+})
+
+test('signed-in users save the plan as a trip', async () => {
+  const fetch = mockApi([
+    [/\/itineraries\/generate$/, () => itineraryResponse()],
+    [/\/trips$/, () => ({ id: 't9' })],
+  ])
+  render(
+    <AuthContext
+      value={{
+        user: { id: 'u1', username: 'asha', displayName: null },
+        loading: false,
+        setUser: () => {},
+      }}
+    >
+      <MemoryRouter initialEntries={['/plan']}>
+        <Routes>
+          <Route path="/plan" element={<PlanPage />} />
+          <Route path="/trips/:id" element={<p>Saved trip page</p>} />
+        </Routes>
+      </MemoryRouter>
+    </AuthContext>,
+  )
+  await userEvent.click(screen.getByRole('checkbox', { name: /beach/i }))
+  await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
+  await userEvent.click(await screen.findByRole('button', { name: /save trip/i }))
+  expect(await screen.findByText('Saved trip page')).toBeInTheDocument()
+  const save = fetch.mock.calls.find((c) => String(c[0]).endsWith('/trips'))!
+  const body = JSON.parse(String(save[1]?.body))
+  expect(body.kind).toBe('ITINERARY')
+  expect(body.title).toMatch(/2-day trip/)
+  expect(body.request.interests).toEqual({ beach: 3 })
+  expect(body.result.days).toHaveLength(2)
+})
+
+test('signed-out users are asked to sign in before saving', async () => {
+  await planBeach()
+  expect(screen.getByRole('link', { name: /sign in to save/i })).toHaveAttribute(
+    'href',
+    '/login?next=%2Fplan',
+  )
 })

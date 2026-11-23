@@ -1318,18 +1318,18 @@ Goal: polished end-to-end product.
 
 Goal: let travel companions view and contribute.
 
-- [ ] Implement trip owner.
-- [ ] Implement viewer/editor roles.
-- [ ] Implement secure share-link generation.
-- [ ] Implement read-only shared page.
-- [ ] Implement revocation and optional expiry.
-- [ ] Implement invitation/role update.
-- [ ] Implement activity suggestions.
-- [ ] Implement voting and duplicate-vote rule.
-- [ ] Implement change history.
-- [ ] Implement optimistic locking.
-- [ ] Implement shared expenses if time permits.
-- [ ] Add access-control integration tests.
+- [x] Implement trip owner.
+- [x] Implement viewer/editor roles.
+- [x] Implement secure share-link generation.
+- [x] Implement read-only shared page.
+- [x] Implement revocation and optional expiry.
+- [x] Implement invitation/role update.
+- [x] Implement activity suggestions.
+- [x] Implement voting and duplicate-vote rule.
+- [x] Implement change history.
+- [x] Implement optimistic locking.
+- [x] Implement shared expenses if time permits.
+- [x] Add access-control integration tests.
 
 **Acceptance gate:** Shared read-only link works; revoked link fails; viewers cannot edit; editors have limited permissions; owner can revoke access; stale edits return conflict.
 
