@@ -108,7 +108,7 @@ Stateless. Re-planning is the same call with the user's edits (`keepStops`, `fix
   "fixedStops": [{"placeId": "<uuid>", "day": 1, "start": "14:00", "minutes": 90}],
   "keepStops": [{"placeId": "<uuid>", "day": 1}],
   "mustVisit": ["<uuid>"], "avoid": ["<uuid>"], "requireWheelchair": false, "regions": [],
-  "maxEntryCostPerPerson": 500, "seed": 42, "destination": "goa" }
+  "maxEntryCostPerPerson": 500, "fillFreeTime": true, "seed": 42, "destination": "goa" }
 ```
 
 Required fields: `baseLat`, `baseLon` and `interests`.
@@ -121,11 +121,13 @@ Required fields: `baseLat`, `baseLon` and `interests`.
 | `pace` | BALANCED | RELAXED, BALANCED, PACKED |
 | `dayStart` / `dayEnd` | 09:00–19:00 | |
 | `startDate` | today (Asia/Kolkata) | |
+| `fillFreeTime` | true | false = schedule only fixed, kept and must-visit stops |
 
 Field meanings:
 - `fixedStops`: hard. The visit starts exactly at `start` on that day.
 - `keepStops`: kept on their day if possible. Repair may drop them to fit a must-visit, and reports it.
 - `userCosts`: per person, labelled USER_ENTERED.
+- `fillFreeTime: false`: no new suggestions are added. The UI uses it to remove or move a stop without a replacement appearing.
 
 Response: `{ runId, durationMicros, itinerary }`. `itinerary` contains:
 - `days[]`: `day`, `date`, `dayOfWeek`, `start`, `end`, `pace`, `returnToBase`, `endOfDay`, `returnTravelMinutes`, `stops[]`, `meals[]`, `workload`, `cost`, `warnings[]`.

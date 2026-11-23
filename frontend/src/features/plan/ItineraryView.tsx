@@ -1,0 +1,379 @@
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { BudgetTable } from '../../components/BudgetTable'
+import { ConfidenceBadge } from '../../components/ConfidenceBadge'
+import { ProviderNotice } from '../../components/ProblemNotice'
+import type { MapPoint } from '../../maps/PlaceMap'
+import type { Day, Itinerary, Stop, Workload } from '../../types/itinerary'
+import type { Confidence, Suggestion } from '../../types/place'
+import { label } from '../../utils/format'
+import { Autocomplete } from '../discover/Autocomplete'
+
+const PlaceMap = lazy(() => import('../../maps/PlaceMap'))
+
+const hhmm = (t: string) => t.slice(0, 5)
+
+export interface StopActions {
+  locked: Set<string>
+  busy: boolean
+  toggleLock: (s: Stop) => void
+  remove: (s: Stop) => void
+  replace: (s: Stop) => void
+  move: (s: Stop, day: number) => void
+  replan: () => void
+  addMustVisit: (s: Suggestion) => void
+}
+
+export function ItineraryView({
+  it,
+  base,
+  actions,
+}: {
+  it: Itinerary
+  base: { lat: number; lon: number }
+  actions: StopActions
+}) {
+  const [dayIdx, setDayIdx] = useState(0)
+  const [mustQuery, setMustQuery] = useState('')
+  const day = it.days[Math.min(dayIdx, it.days.length - 1)]
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="space-y-1 rounded border border-zinc-200 bg-white p-3">
+        <ProviderNotice provider={it.travelProvider} basis={it.travelBasis} />
+        <p className="text-zinc-500">{it.disclaimer}</p>
+        {it.coverage.uncovered.length > 0 && (
+          <p className="text-amber-700">
+            Not covered:{' '}
+            {it.coverage.uncovered.map((u) => `${label(u)} (${it.coverage.reasons[u]})`).join('; ')}
+          </p>
+        )}
+        {it.warnings.length > 0 && (
+          <ul className="ml-4 list-disc text-zinc-600">
+            {it.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+        {it.repairs.length + it.unscheduled.length > 0 && (
+          <details>
+            <summary className="cursor-pointer text-zinc-600">
+              Left out or changed ({it.repairs.length + it.unscheduled.length})
+            </summary>
+            <ul className="ml-4 list-disc text-zinc-600">
+              {it.repairs.map((r) => (
+                <li key={'r' + r.placeId + r.action}>
+                  {r.name}: {r.reason}
+                </li>
+              ))}
+              {it.unscheduled.map((u) => (
+                <li key={'u' + u.placeId}>
+                  {u.name}: {u.reason}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <section className="rounded border border-zinc-200 bg-white p-3">
+          <h2 className="mb-2 font-medium">Overview and workload</h2>
+          <ul className="space-y-2">
+            {it.days.map((d) => (
+              <li key={d.day}>
+                <div className="flex justify-between text-xs">
+                  <span>
+                    Day {d.day} · {label(d.dayOfWeek.toLowerCase())} {d.date} · {d.stops.length}{' '}
+                    stop(s)
+                  </span>
+                  <span>
+                    {label(d.workload.label.toLowerCase())} ·{' '}
+                    {Math.round(d.workload.utilisation * 100)}% busy
+                  </span>
+                </div>
+                <WorkloadBar day={d.day} w={d.workload} />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-500">
+            {LEGEND.map(([k, cls]) => (
+              <span key={k}>
+                <span className={`mr-1 inline-block h-2 w-2 rounded-sm ${cls}`} />
+                {k}
+              </span>
+            ))}
+          </p>
+        </section>
+        <section className="rounded border border-zinc-200 bg-white p-3">
+          <h2 className="mb-2 font-medium">Budget</h2>
+          <BudgetTable budget={it.budget} />
+        </section>
+      </div>
+
+      <section className="flex flex-wrap items-end gap-2 rounded border border-zinc-200 bg-white p-3">
+        <div className="min-w-64 flex-1">
+          <span className="text-xs text-zinc-600">Add a must-visit place</span>
+          <Autocomplete
+            value={mustQuery}
+            onChange={setMustQuery}
+            onPick={(s) => {
+              setMustQuery('')
+              actions.addMustVisit(s)
+            }}
+            placesOnly
+            label="Add a must-visit place"
+            placeholder="Search a place to include"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={actions.busy}
+          onClick={actions.replan}
+          className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50"
+        >
+          Replan, keeping locked stops
+        </button>
+        <p className="w-full text-xs text-zinc-500">
+          Lock stops you want to keep. Remove takes a stop out without a replacement; replace asks
+          for another suggestion. Every edit re-runs the planner, so times update.
+        </p>
+      </section>
+
+      <div role="tablist" className="flex flex-wrap gap-1">
+        {it.days.map((d, i) => (
+          <button
+            key={d.day}
+            role="tab"
+            aria-selected={d === day}
+            onClick={() => setDayIdx(i)}
+            className={`rounded px-3 py-1 ${d === day ? 'bg-teal-700 text-white' : 'bg-white ring-1 ring-zinc-200'}`}
+          >
+            Day {d.day} · {label(d.dayOfWeek.toLowerCase())}
+          </button>
+        ))}
+      </div>
+      {day && <DayView day={day} days={it.days.length} base={base} actions={actions} />}
+    </div>
+  )
+}
+
+const LEGEND: [string, string][] = [
+  ['Visits', 'bg-teal-600'],
+  ['Travel', 'bg-sky-500'],
+  ['Meals', 'bg-amber-400'],
+  ['Buffer and waits', 'bg-zinc-400'],
+  ['Free', 'bg-zinc-100 ring-1 ring-zinc-300'],
+]
+
+function WorkloadBar({ day, w }: { day: number; w: Workload }) {
+  const parts: [number, string][] = [
+    [w.activityMinutes, LEGEND[0][1]],
+    [w.travelMinutes, LEGEND[1][1]],
+    [w.mealMinutes, LEGEND[2][1]],
+    [w.bufferMinutes + w.waitMinutes, LEGEND[3][1]],
+  ]
+  const pct = Math.round(w.utilisation * 100)
+  return (
+    <div
+      role="meter"
+      aria-label={`Day ${day} workload`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      aria-valuetext={`${pct}% busy, ${w.freeMinutes} min free`}
+      className="mt-1 flex h-3 overflow-hidden rounded bg-zinc-100"
+    >
+      {parts.map(([m, cls], i) =>
+        m > 0 ? (
+          <span key={i} className={cls} style={{ width: `${(100 * m) / w.windowMinutes}%` }} />
+        ) : null,
+      )}
+    </div>
+  )
+}
+
+type Entry = { at: string; stop?: Stop; meal?: Day['meals'][number] }
+
+function DayView({
+  day,
+  days,
+  base,
+  actions,
+}: {
+  day: Day
+  days: number
+  base: { lat: number; lon: number }
+  actions: StopActions
+}) {
+  const points = useMemo<MapPoint[]>(
+    () => [
+      { id: 'base', lat: base.lat, lon: base.lon, label: 'Base' },
+      ...day.stops.map((s) => ({
+        id: s.place.id,
+        lat: s.place.lat,
+        lon: s.place.lon,
+        label: s.place.name,
+        order: s.order,
+      })),
+    ],
+    [day, base],
+  )
+  const entries: Entry[] = [
+    ...day.stops.map((s) => ({ at: s.start, stop: s })),
+    ...day.meals.map((m) => ({ at: m.start, meal: m })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+  const o = day.ordering
+  return (
+    <div className="grid gap-3 xl:grid-cols-2">
+      <div className="space-y-2">
+        <Suspense fallback={<div className="h-80 rounded bg-zinc-100" />}>
+          <PlaceMap points={points} line={day.route?.geometry} className="h-80" />
+        </Suspense>
+        {day.route && (
+          <p className="text-xs text-zinc-500">
+            Route: {day.route.totalKm.toFixed(1)} km, {day.route.totalMinutes} min driving (
+            {day.route.provider === 'OSRM' ? 'road network' : 'straight lines, estimate'})
+          </p>
+        )}
+        {day.navigationUrls.map((u, i) => (
+          <a
+            key={u}
+            href={u}
+            target="_blank"
+            rel="noreferrer"
+            className="mr-3 text-teal-700 underline"
+          >
+            Open in Google Maps{day.navigationUrls.length > 1 ? ` (part ${i + 1})` : ''}
+          </a>
+        ))}
+        {o && o.doubleTreeCost != null && (
+          <p className="text-xs text-zinc-600">
+            Order: {o.applied === 'DOUBLE_TREE' ? 'Double-Tree tour' : 'insertion order'}.{' '}
+            Double-Tree {o.doubleTreeCost} min
+            {o.guaranteeApplies ? ' (≤ 2 × optimal on symmetric travel times)' : ''}
+            {o.exactCost != null && `, exact optimum ${o.exactCost} min`}
+            {o.nearestNeighbourCost != null && `, nearest-neighbour ${o.nearestNeighbourCost} min`},
+            insertion {o.insertionCost} min. {o.note}
+          </p>
+        )}
+      </div>
+      <div className="space-y-2 rounded border border-zinc-200 bg-white p-3">
+        <p>
+          {hhmm(day.start)}–{hhmm(day.end)} · {label(day.pace.toLowerCase())} pace ·{' '}
+          {day.workload.freeMinutes} min free ·{' '}
+          {day.returnToBase ? `back at base ${hhmm(day.endOfDay)}` : `ends ${hhmm(day.endOfDay)}`}
+        </p>
+        <ol aria-label={`Day ${day.day} stops`} className="space-y-1">
+          {entries.map((e) =>
+            e.stop ? (
+              <StopItem
+                key={e.stop.place.id}
+                s={e.stop}
+                day={day.day}
+                days={days}
+                actions={actions}
+              />
+            ) : (
+              <li key={'meal' + e.meal!.label} className="px-2 text-zinc-600">
+                {e.meal!.label} {hhmm(e.meal!.start)}–{hhmm(e.meal!.end)}
+                {e.meal!.place ? ` at ${e.meal!.place}` : ' (break)'}
+              </li>
+            ),
+          )}
+          {day.returnToBase && (
+            <li className="px-2 text-xs text-zinc-500">
+              ↩ {day.returnTravelMinutes} min back to base
+            </li>
+          )}
+        </ol>
+        {day.warnings.map((w) => (
+          <p key={w} className="text-amber-700">
+            {w}
+          </p>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const btn = 'rounded px-2 py-0.5 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100 disabled:opacity-50'
+
+function StopItem({
+  s,
+  day,
+  days,
+  actions,
+}: {
+  s: Stop
+  day: number
+  days: number
+  actions: StopActions
+}) {
+  const name = s.place.name
+  const locked = actions.locked.has(s.place.id)
+  return (
+    <li className={`rounded p-2 ${locked ? 'bg-teal-50' : 'bg-zinc-50'}`}>
+      <div className="text-xs text-zinc-500">
+        ↓ {s.travelMinutes} min, {s.travelKm.toFixed(1)} km
+        {s.waitMinutes > 0 && ` · waits ${s.waitMinutes} min for opening`}
+      </div>
+      <span className="font-medium">
+        {s.order}. {name}
+      </span>{' '}
+      <span className="text-zinc-600">
+        {hhmm(s.start)}–{hhmm(s.end)} ({s.visitMinutes} min)
+      </span>
+      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-zinc-600">
+        <span>{s.cost.unknown ? 'cost not known' : `₹${s.cost.max}`}</span>
+        <ConfidenceBadge confidence={s.cost.confidence as Confidence} />
+        <span>· hours {label(s.hours.status.toLowerCase())}</span>
+        <ConfidenceBadge confidence={s.hours.confidence as Confidence} />
+        {s.kind === 'MUST_VISIT' && <span className="text-teal-800">· must-visit</span>}
+      </div>
+      <div className="text-xs text-zinc-500">{s.reason}</div>
+      <div className="mt-1 flex flex-wrap gap-1">
+        <button
+          type="button"
+          aria-label={`Lock ${name}`}
+          aria-pressed={locked}
+          className={btn}
+          onClick={() => actions.toggleLock(s)}
+        >
+          {locked ? 'Locked' : 'Lock'}
+        </button>
+        <button
+          type="button"
+          aria-label={`Remove ${name}`}
+          disabled={actions.busy}
+          className={btn}
+          onClick={() => actions.remove(s)}
+        >
+          Remove
+        </button>
+        <button
+          type="button"
+          aria-label={`Replace ${name}`}
+          disabled={actions.busy}
+          className={btn}
+          onClick={() => actions.replace(s)}
+        >
+          Replace
+        </button>
+        {days > 1 && (
+          <select
+            aria-label={`Move ${name} to day`}
+            value={day}
+            disabled={actions.busy}
+            onChange={(e) => actions.move(s, Number(e.target.value))}
+            className="rounded text-xs ring-1 ring-zinc-300"
+          >
+            {Array.from({ length: days }, (_, i) => (
+              <option key={i} value={i + 1}>
+                Day {i + 1}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    </li>
+  )
+}

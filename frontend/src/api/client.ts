@@ -36,3 +36,23 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
+
+export interface Problem {
+  message: string
+  conflicts: string[]
+  relaxations: string[]
+  extra?: string
+}
+
+/** Turns an API failure into what went wrong and what to relax. */
+export function toProblem(e: unknown, fallback: string): Problem {
+  if (!(e instanceof ApiError)) return { message: fallback, conflicts: [], relaxations: [] }
+  const d = e.details
+  const arrival = d.estimatedArrival as string | undefined
+  return {
+    message: e.message,
+    conflicts: (d.conflicts as string[]) ?? [],
+    relaxations: (d.suggestedRelaxations as string[]) ?? [],
+    extra: arrival ? `Estimated arrival: ${arrival.replace('T', ' ').slice(0, 16)}` : undefined,
+  }
+}

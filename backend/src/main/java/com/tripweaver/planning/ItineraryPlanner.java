@@ -300,7 +300,7 @@ public final class ItineraryPlanner {
             placeKept();
             placeMustVisits();
             checkMandatoryBudget();
-            fillOptional();
+            if (req.fillFreeTime()) fillOptional();
             enforceHardBudget();
             orderDays();
             return build();

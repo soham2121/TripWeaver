@@ -182,3 +182,31 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 - **Decision:** the straight-line fallback drives the first 10 road-km of each leg at local speed (car 28, scooter 25 km/h) and the rest at highway speed (car and taxi 60, scooter 45 km/h).
 - **Why:** with one speed, Mumbai→Goa estimated about 18 h. With two speeds it is about 9 h, against OSRM's free-flow 6.8 h.
 - **Why 10 km:** a larger local share would wrongly penalise splitting a highway leg for a short detour.
+
+## D32 — Editing an itinerary re-runs the planner
+- **Decision:** every edit in the UI calls the stateless generate endpoint again with the user's edits. Nothing is patched locally, so times, travel, opening hours and budget always come from the planner.
+- **How each edit maps to request fields:**
+
+  | Edit | Request |
+  |---|---|
+  | Remove | `avoid` + the place; every other stop goes into `keepStops` on its day; `fillFreeTime: false` |
+  | Replace | Same as remove, with `fillFreeTime: true`, so the planner suggests something else |
+  | Move to day | Every stop in `keepStops`, the moved one on its new day; `fillFreeTime: false` |
+  | Add a must-visit place | `mustVisit` + the place; current stops kept; `fillFreeTime: false` |
+  | Lock + Replan | Only locked stops in `keepStops`; the rest is planned again |
+
+- **Wizard:** generating a new plan from the wizard clears all edits.
+- **New field:** `fillFreeTime` (default true) was added so that "remove" does not bring in a replacement.
+- **Cost if wrong:** each edit is a full planning run, about 50 ms with OSRM on the Goa catalogue. Saved trips (Phase 10) will persist the edits.
+
+## D33 — Frontend structure for Phase 9
+- **Home:** three modes (`/plan?mode=today`, `/plan?mode=trip`, `/road-trip`) and four demo scenarios. The demos use the bundled catalogue and need no keys.
+- **Today mode:** one day, starting at the next quarter hour (not before 09:00) and ending at 21:00. After 17:00 it plans tomorrow instead.
+- **Wizard:** three steps: interests; where and when; travel and budget. "Generate plan" is available on every step once one interest is chosen.
+- **Results:**
+  - Provider notice: OSRM, or "road routing unavailable" with straight-line estimates.
+  - Coverage gaps and warnings, plus what was left out or repaired.
+  - Per-day workload bars (visits, travel, meals, buffer, free) and a budget table with a confidence badge on every line.
+  - Day tabs, each with a map, the timeline including meals and travel, the ordering evidence and Google Maps links.
+- **Road trip page:** fixed stops in the user's order, each with optional overnight and stop minutes. Place search covers the Konkan and Goa catalogues. Results show segments and detours, a timeline per day, the overnight with its confidence badge, and the budget.
+- **No charting library:** workload bars are plain CSS with `role="meter"`.

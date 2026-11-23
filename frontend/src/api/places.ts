@@ -20,8 +20,8 @@ function qs(params: Record<string, string | number | boolean | undefined>): stri
 export const placesApi = {
   search: (p: SearchParams) =>
     api<Page<PlaceSummary>>(`/places/search?${qs({ ...p, destination: 'goa' })}`),
-  autocomplete: (q: string, limit = 8) =>
-    api<Suggestion[]>(`/places/autocomplete?${qs({ q, limit, destination: 'goa' })}`),
+  autocomplete: (q: string, limit = 8, destination = 'goa') =>
+    api<Suggestion[]>(`/places/autocomplete?${qs({ q, limit, destination })}`),
   get: (id: string) => api<PlaceDetail>(`/places/${encodeURIComponent(id)}`),
   destinations: () => api<Destination[]>('/destinations'),
 }

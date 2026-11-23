@@ -16,7 +16,52 @@ export interface ItineraryRequest {
   dayStart?: string
   dayEnd?: string
   returnToBase?: boolean
+  budget?: { amount: number; basis: 'PER_PERSON' | 'TOTAL'; strictness: 'HARD' | 'FLEXIBLE' }
+  costs?: { foodPerPersonPerDay?: number }
+  keepStops?: { placeId: string; day: number }[]
+  mustVisit?: string[]
+  avoid?: string[]
+  fillFreeTime?: boolean
   seed?: number
+}
+
+export interface BudgetLine {
+  category: string
+  item: string
+  min: number | null
+  max: number | null
+  confidence: string
+  basis: string
+  note: string
+}
+
+export interface Budget {
+  currency: string
+  partySize: number
+  lines: BudgetLine[]
+  knownMin: number
+  knownMax: number
+  unknownItems: string[]
+  complete: boolean
+  limit: number | null
+  limitBasis: string | null
+  strictness: string | null
+  status: string
+  knownMaxPerPerson: number
+}
+
+export interface Workload {
+  windowMinutes: number
+  activityMinutes: number
+  travelMinutes: number
+  mealMinutes: number
+  bufferMinutes: number
+  waitMinutes: number
+  freeMinutes: number
+  utilisation: number
+  stops: number
+  highIntensityStops: number
+  label: string
 }
 
 export interface Money {
@@ -80,7 +125,7 @@ export interface Day {
   meals: { label: string; start: string; end: string; place: string | null }[]
   returnTravelMinutes: number
   endOfDay: string
-  workload: { utilisation: number; freeMinutes: number; travelMinutes: number; label: string }
+  workload: Workload
   warnings: string[]
   ordering: Ordering | null
   route: DayRoute | null
@@ -89,7 +134,7 @@ export interface Day {
 
 export interface Itinerary {
   days: Day[]
-  budget: { status: string; knownMax: number; unknownItems: string[]; complete: boolean }
+  budget: Budget
   coverage: {
     requested: string[]
     covered: string[]
@@ -97,6 +142,7 @@ export interface Itinerary {
     reasons: Record<string, string>
   }
   unscheduled: { placeId: string; name: string; kind: string; reason: string }[]
+  repairs: { action: string; placeId: string; name: string; day: number; reason: string }[]
   warnings: string[]
   travelProvider: string
   travelBasis: string

@@ -1298,19 +1298,19 @@ Goal: plan intercity journeys with fixed waypoints and optional detours.
 
 Goal: polished end-to-end product.
 
-- [ ] Build home modes: today, multi-day, road trip.
-- [ ] Build preference wizard.
-- [ ] Build discovery map/list.
-- [ ] Build itinerary overview and daily timeline.
-- [ ] Build budget breakdown.
-- [ ] Build pace/workload visualisation.
-- [ ] Build route visualisation.
-- [ ] Add edit/remove/replace/replan actions.
-- [ ] Show uncovered interests and constraint warnings.
-- [ ] Add loading/empty/error/provider states.
-- [ ] Add preloaded demo scenarios.
-- [ ] Label all estimates and data confidence.
-- [ ] Add frontend integration tests.
+- [x] Build home modes: today, multi-day, road trip.
+- [x] Build preference wizard.
+- [x] Build discovery map/list.
+- [x] Build itinerary overview and daily timeline.
+- [x] Build budget breakdown.
+- [x] Build pace/workload visualisation.
+- [x] Build route visualisation.
+- [x] Add edit/remove/replace/replan actions.
+- [x] Show uncovered interests and constraint warnings.
+- [x] Add loading/empty/error/provider states.
+- [x] Add preloaded demo scenarios.
+- [x] Label all estimates and data confidence.
+- [x] Add frontend integration tests.
 
 **Acceptance gate:** Complete user-input-to-itinerary workflow works; user can understand and edit results; demo works without live provider credentials.
 

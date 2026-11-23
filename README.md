@@ -32,6 +32,8 @@ npm install
 npm run dev
 ```
 
+Open http://localhost:5173. The home page offers three modes (plan today, multi-day trip, road trip) and preloaded demo scenarios that work without any API keys.
+
 Configuration comes from environment variables. See [`.env.example`](.env.example). No API keys are needed for the core workflow.
 
 ## Tests and checks

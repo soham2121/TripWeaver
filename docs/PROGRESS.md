@@ -13,7 +13,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 6 — Time, budget, pace, scheduling | Passed |
 | 7 — Route ordering and navigation | Passed |
 | 8 — Road-trip planner | Passed |
-| 9 — Itinerary UI and editing | Not started |
+| 9 — Itinerary UI and editing | Passed |
 | 10 — Sharing and collaboration | Not started |
 | 11 — Optional enrichment | Not started |
 | 12 — Benchmarks and audit | Not started |
@@ -279,3 +279,54 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - Driving and rest limits are respected (asserted on every day).
 - Detours are optional and bounded (limits, drop-on-conflict, tight-arrival test).
 - Estimates carry confidence labels.
+
+## Phase 9 report — Complete itinerary UI and editing (passed)
+
+**Checklist:** all 13 items done (see `IMPLEMENTATION.md`).
+- **Home:** three modes (plan today, multi-day trip, road trip) and demo scenarios: Goa beach weekend, Old Goa heritage day, South Goa family trip, and Mumbai to Goa drive.
+- **Preference wizard:** interests with importance; base, dates, days and day window; pace, transport, party size, budget (amount, per person or total, hard or flexible) and food per day.
+- **Discovery:** the map and list from Phases 4–5. The nav now links Home, Discover, Plan and Road trip.
+- **Itinerary results:**
+  - Overview of each day with stacked workload bars.
+  - Budget table: every line has a confidence badge, and unknown amounts read "not known", never ₹0.
+  - Day timeline: travel to each stop, visit times, wait for opening, meals, return to base, and cost and opening-hours badges.
+  - Route map and Google Maps links.
+- **Edits:** lock, remove, replace, move to another day, add a must-visit place, and replan keeping locked stops. Each edit re-runs the planner (D32). Backend change: `fillFreeTime` on the itinerary request.
+- **Road trip page:** from, to and ordered stops, each with optional overnight and stop minutes. Also departure date and time, arrive-by, driving limit, detour interests and limits, and known costs. Results show the summary, provider, warnings, segments with detours, a timeline per day, the overnight with its badge, the budget and navigation links.
+- **States:**
+  - Loading status while planning.
+  - Empty prompts before the first plan.
+  - Error notices with conflicts, suggested relaxations and the estimated arrival.
+  - Provider-unavailable notice when road routing falls back to estimates.
+  - The map component already falls back when tiles fail.
+
+**Commands and results:**
+- `./mvnw -o test spotless:check`: 193 tests, 0 failures. New: `ItineraryPlannerTest.removingAStopWithoutRefillKeepsOnlyTheKeptStops`.
+- `npm test`: 23 passed. New: `PlanPage.test` (11), `RoadTripPage.test` (3), `HomePage.test` (1).
+- `npx tsc -b`, `npm run build`, `prettier --check`: clean.
+- `oxlint`: only warnings that were already there.
+
+**Live check:** backend jar with OSRM, called through the Vite proxy on :5173.
+- Itinerary demos:
+  - Beach weekend: 4 and 3 stops, budget incomplete.
+  - Old Goa: 4 stops.
+  - South Goa family: 3, 2 and 3 stops.
+- Edits:
+  - Remove: the stop is gone and all others are kept on their days.
+  - Move: the stop moves from day 1 to day 2.
+  - Replace: a new suggestion fills the gap.
+- Mumbai to Goa demo: 2 days, overnight at "Manjunath" (SUGGESTED), 2 heritage detours.
+- Place search: the Konkan catalogue answers, for example "Hotel Ratna".
+- **Browser check not done:** the Chrome extension was not connected in this session. The UI was verified by the component tests and the API calls above.
+
+**Bug found and fixed:** the Days input reset to 1 when cleared, so typing "3" gave "13". The field now stays empty while you type and is clamped to 1..14 when the plan is generated.
+
+**Known limits:**
+- Edits are not saved; reloading the page loses them. Saved trips come in Phase 10.
+- Road-trip stops cannot be reordered after adding; remove and add again instead.
+
+**Gate:**
+- The full flow from your inputs to an itinerary works for all three modes.
+- Results explain themselves: provider, labels, coverage gaps, budget and workload.
+- Results can be edited.
+- The demos need no provider credentials.

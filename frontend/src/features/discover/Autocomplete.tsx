@@ -8,10 +8,24 @@ interface Props {
   onChange: (v: string) => void
   onPick: (s: Suggestion) => void
   placeholder?: string
+  /** Destination catalogues to search (default Goa). */
+  destinations?: string[]
+  /** Only suggest individual places (no categories or regions). */
+  placesOnly?: boolean
+  label?: string
 }
 
 /** Text input with Trie-backed suggestions from the API (debounced). */
-export function Autocomplete({ value, onChange, onPick, placeholder }: Props) {
+export function Autocomplete({
+  value,
+  onChange,
+  onPick,
+  placeholder,
+  destinations = ['goa'],
+  placesOnly = false,
+  label: aria = 'Search places',
+}: Props) {
+  const dests = destinations.join(',')
   const [items, setItems] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
@@ -25,8 +39,15 @@ export function Autocomplete({ value, onChange, onPick, placeholder }: Props) {
     }
     let live = true
     const t = setTimeout(() => {
-      placesApi
-        .autocomplete(q)
+      Promise.all(dests.split(',').map((d) => placesApi.autocomplete(q, 8, d)))
+        .then((rs) =>
+          rs
+            .flat()
+            .filter((x) => !placesOnly || x.type === 'PLACE')
+            .filter(
+              (x, i, a) => a.findIndex((y) => y.type === x.type && y.value === x.value) === i,
+            ),
+        )
         .then((r) => live && setItems(r))
         .catch(() => live && setItems([]))
     }, 150)
@@ -34,7 +55,7 @@ export function Autocomplete({ value, onChange, onPick, placeholder }: Props) {
       live = false
       clearTimeout(t)
     }
-  }, [value])
+  }, [value, dests, placesOnly])
 
   const pick = (s: Suggestion) => {
     setOpen(false)
@@ -49,7 +70,7 @@ export function Autocomplete({ value, onChange, onPick, placeholder }: Props) {
         aria-expanded={open && items.length > 0}
         aria-controls={listId}
         aria-autocomplete="list"
-        aria-label="Search places"
+        aria-label={aria}
         className="w-full rounded border border-zinc-300 px-3 py-2"
         placeholder={placeholder}
         value={value}

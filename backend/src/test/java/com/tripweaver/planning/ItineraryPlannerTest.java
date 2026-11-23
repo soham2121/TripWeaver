@@ -328,6 +328,17 @@ class ItineraryPlannerTest {
     }
 
     @Test
+    void removingAStopWithoutRefillKeepsOnlyTheKeptStops() {
+        cluster(6, "beach", 0.01);
+        UUID a = id("beach 1"), b = id("beach 2"), removed = id("beach 0");
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5},\"fillFreeTime\":false,"
+                + "\"keepStops\":[{\"placeId\":\"" + a + "\",\"day\":1},{\"placeId\":\"" + b + "\",\"day\":1}],"
+                + "\"avoid\":[\"" + removed + "\"]");
+        assertEquals(Set.of("beach 1", "beach 2"), names(it));
+        assertTimelinesFit(it);
+    }
+
+    @Test
     void daysStayInOneAreaInsteadOfHopping() {
         for (int i = 0; i < 4; i++) {
             add("North beach " + i, "beach", 0.25 + 0.003 * i, 0, 60, 60, "LOW", List.of(), "north");

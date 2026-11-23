@@ -14,6 +14,8 @@ import java.util.UUID;
  * @param fixedStops hard: booked visits at a fixed day and time
  * @param keepStops stops kept from a previous plan on a given day (re-planning); repair may drop them to fit a
  *     must-visit, and says so
+ * @param fillFreeTime false = schedule only fixed, kept and must-visit stops (removing a stop without a
+ *     replacement); default true
  * @param userCosts user-entered per-person cost for a place (INR), labelled USER_ENTERED
  */
 public record ItineraryRequest(
@@ -41,6 +43,7 @@ public record ItineraryRequest(
         Boolean requireWheelchair,
         Set<String> regions,
         Double maxEntryCostPerPerson,
+        Boolean fillFreeTime,
         Long seed) {
 
     public enum BudgetBasis {
@@ -88,6 +91,7 @@ public record ItineraryRequest(
         dayEnd = dayEnd == null ? LocalTime.of(19, 0) : dayEnd;
         returnToBase = returnToBase == null || returnToBase;
         requireWheelchair = requireWheelchair != null && requireWheelchair;
+        fillFreeTime = fillFreeTime == null || fillFreeTime;
         costs = costs == null ? new Costs(null, null, null, null, null) : costs;
     }
 }
