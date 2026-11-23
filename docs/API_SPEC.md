@@ -15,7 +15,7 @@ Status codes:
 | 403 | Insufficient permissions |
 | 404 | Not found |
 | 409 | Version conflict |
-| 422 | Infeasible plan |
+| 422 | Infeasible plan (`INFEASIBLE_PLAN`, `BUDGET_INFEASIBLE`) |
 | 429 | Provider quota exceeded |
 | 500 | Unexpected error (no stack trace) |
 
@@ -72,7 +72,8 @@ Body (`RecommendationRequest`), all fields optional except `interests`:
 ```json
 { "interests": {"beach": 5, "food": 4}, "baseLat": 15.52, "baseLon": 73.766, "travelMonth": 12,
   "maxEntryCostPerPerson": 500, "dayMinutes": 600, "mustVisit": ["<uuid>"], "avoid": ["<uuid>"],
-  "requireWheelchair": false, "regions": ["north-coast"], "poolSize": 60, "maxSelections": 20, "seed": 42 }
+  "requireWheelchair": false, "regions": ["north-coast"], "poolSize": 60, "maxSelections": 20,
+  "quotaPerInterest": 3, "seed": 42 }
 ```
 
 Response: `{ runId, durationMicros, result }`. `result` contains:
@@ -88,3 +89,62 @@ Errors:
 
 ### `GET /algorithms/metadata?limit=20`
 Returns the five algorithm descriptors plus recent `algorithm_runs` rows (algorithm, version, input size, seed, duration, summary JSON).
+
+## Itineraries (Phase 6)
+
+### `POST /itineraries/generate`
+Stateless. Re-planning is the same call with the user's edits (`keepStops`, `fixedStops`, `mustVisit`, `avoid`).
+
+```json
+{ "baseLat": 15.5202, "baseLon": 73.7659, "baseName": "Candolim stay",
+  "startDate": "2026-12-14", "days": 3, "partySize": 2,
+  "interests": {"beach": 5, "food": 4, "heritage": 4},
+  "transport": "CAR", "pace": "BALANCED", "dayStart": "09:00", "dayEnd": "19:00", "returnToBase": true,
+  "budget": {"amount": 30000, "basis": "TOTAL", "strictness": "HARD"},
+  "costs": {"foodPerPersonPerDay": 1200, "accommodationPerNight": 4000,
+            "fuelPricePerLitre": 101, "mileageKmPerLitre": 15, "miscBufferPercent": 10},
+  "userCosts": {"<placeId>": 250},
+  "dayOverrides": [{"day": 2, "pace": "PACKED", "start": "08:00", "end": "21:00", "returnToBase": true}],
+  "fixedStops": [{"placeId": "<uuid>", "day": 1, "start": "14:00", "minutes": 90}],
+  "keepStops": [{"placeId": "<uuid>", "day": 1}],
+  "mustVisit": ["<uuid>"], "avoid": ["<uuid>"], "requireWheelchair": false, "regions": [],
+  "maxEntryCostPerPerson": 500, "seed": 42, "destination": "goa" }
+```
+
+Required fields: `baseLat`, `baseLon` and `interests`.
+
+| Field | Default | Allowed values |
+|---|---|---|
+| `days` | 1 | 1..14 |
+| `partySize` | 1 | 1..20 |
+| `transport` | CAR | CAR, SCOOTER, TAXI, WALK |
+| `pace` | BALANCED | RELAXED, BALANCED, PACKED |
+| `dayStart` / `dayEnd` | 09:00–19:00 | |
+| `startDate` | today (Asia/Kolkata) | |
+
+Field meanings:
+- `fixedStops`: hard. The visit starts exactly at `start` on that day.
+- `keepStops`: kept on their day if possible. Repair may drop them to fit a must-visit, and reports it.
+- `userCosts`: per person, labelled USER_ENTERED.
+
+Response: `{ runId, durationMicros, itinerary }`. `itinerary` contains:
+- `days[]`: `day`, `date`, `dayOfWeek`, `start`, `end`, `pace`, `returnToBase`, `endOfDay`, `returnTravelMinutes`, `stops[]`, `meals[]`, `workload`, `cost`, `warnings[]`.
+  - `stops[]`: `order`, `place`, `arrive`, `start`, `end`, `visitMinutes`, `visitBasis`, `travelMinutes`, `travelKm`, `waitMinutes`, `kind`, `covers[]`, `cost`, `hours`, `reason`.
+    - `kind` is one of FIXED, KEEP, MUST_VISIT, COVER or FILL.
+    - `cost` has `min`, `max`, `unknown`, `confidence` and `note`; `min` and `max` are null when the cost is unknown.
+    - `hours` has `raw`, `confidence` and `status` (CHECKED, UNPARSED or UNKNOWN).
+  - `meals[]`: `label`, `start`, `end`, `place`. `place` is set when a food stop serves as the meal.
+  - `workload`: `windowMinutes`, `activityMinutes`, `travelMinutes`, `mealMinutes`, `bufferMinutes`, `waitMinutes`, `freeMinutes`, `utilisation`, `stops`, `highIntensityStops`, `regionTransitions`, `intensityLoad`, `label`.
+- `budget`:
+  - Fields: `currency`, `partySize`, `lines[]`, `knownMin`, `knownMax`, `unknownItems[]`, `complete`, `limit`, `limitBasis`, `strictness`, `status`, `knownMaxPerPerson`.
+  - Each line has `category`, `item`, `min`, `max`, `confidence`, `basis` and `note`.
+  - Line categories: ENTRY_FEES, ACTIVITIES, ENTRY_OR_ACTIVITY, FOOD, ACCOMMODATION, FUEL, LOCAL_TRANSPORT, MISC_BUFFER.
+  - Status values: WITHIN_BUDGET, INCOMPLETE, OVER_BUDGET (flexible budgets only), NO_LIMIT, NO_LIMIT_INCOMPLETE.
+- `coverage`: `requested`, `covered`, `uncovered` and `reasons{interest → why}`.
+- Reporting fields: `unscheduled[]` (`placeId`, `name`, `kind`, `reason`), `repairs[]` (`action`, `placeId`, `name`, `day`, `reason`), and `warnings[]`.
+- Metadata: `travelBasis`, `disclaimer`, `seed`, and `stats` (`candidates`, `insertionEvaluations`, `repairs`, `recommendationEligible`).
+
+Errors:
+- 400: `BAD_BASE`, `BAD_DAYS`, `BAD_PARTY`, `BAD_DAY_WINDOW`, `BAD_BUDGET`, `BAD_COST`, `BAD_OVERRIDE`, `BAD_FIXED_STOP`, `BAD_KEEP_STOP`, plus the recommendation codes.
+- 422: `INFEASIBLE_PLAN`, with `details.conflicts` and `details.suggestedRelaxations`.
+- 422: `BUDGET_INFEASIBLE`, with `details.estimatedMaximum`, `details.budget` and `details.currency`.

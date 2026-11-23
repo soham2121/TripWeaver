@@ -26,6 +26,7 @@ public class PlaceCatalogue {
 
     private final JdbcTemplate jdbc;
     private volatile Map<String, PlaceSearchIndex> indexes;
+    private volatile Map<UUID, PlaceHours> hours = Map.of();
 
     public PlaceCatalogue(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -39,6 +40,12 @@ public class PlaceCatalogue {
         PlaceSearchIndex idx = m.get(slug);
         if (idx == null) throw ApiException.notFound("Destination", slug);
         return idx;
+    }
+
+    /** Sourced opening hours (a VERIFIED source preferred), or null when none are known. */
+    public PlaceHours hours(UUID placeId) {
+        if (indexes == null) reload();
+        return hours.get(placeId);
     }
 
     @EventListener
@@ -63,8 +70,12 @@ public class PlaceCatalogue {
                                     rs.getString(6),
                                     rs.getString(7)));
                 });
-        Set<UUID> withHours =
-                new HashSet<>(jdbc.queryForList("SELECT DISTINCT place_id FROM place_opening_hours", UUID.class));
+        Map<UUID, PlaceHours> hoursById = new HashMap<>();
+        jdbc.query("SELECT place_id, raw, confidence FROM place_opening_hours", rs -> {
+            PlaceHours h = new PlaceHours(rs.getString(2), rs.getString(3));
+            hoursById.merge(rs.getObject(1, UUID.class), h, (a, b) -> "VERIFIED".equals(b.confidence()) ? b : a);
+        });
+        Set<UUID> withHours = hoursById.keySet();
 
         Map<String, List<PlaceSummary>> byDest = new HashMap<>();
         jdbc.query("""
@@ -106,6 +117,7 @@ public class PlaceCatalogue {
         // Destinations with no places yet still resolve.
         for (String slug : jdbc.queryForList("SELECT slug FROM destinations", String.class))
             m.putIfAbsent(slug, PlaceSearchIndex.build(List.of()));
+        hours = Map.copyOf(hoursById);
         indexes = Map.copyOf(m);
         return indexes;
     }

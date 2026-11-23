@@ -268,4 +268,20 @@ class RecommendationEngineTest {
         assertTrue(beachPick.score().notes().contains("cost unknown"));
         assertTrue(r.warnings().stream().anyMatch(w -> w.contains("unknown cost")));
     }
+
+    @Test
+    void quotaPerInterestIsConfigurableAndFillKeepsTheWholePool() {
+        RecommendationResult dflt =
+                RecommendationEngine.recommend(catalogue(), req().poolSize(30).build());
+        assertEquals(3, dflt.pool().reserved().get("beach"));
+        RecommendationResult wide = RecommendationEngine.recommend(
+                catalogue(), req().poolSize(30).quotaPerInterest(5).build());
+        assertEquals(5, wide.pool().reserved().get("beach"));
+        assertEquals(30, wide.selected().size() + wide.fill().size());
+        ApiException e = assertThrows(
+                ApiException.class,
+                () -> RecommendationEngine.recommend(
+                        catalogue(), req().quotaPerInterest(51).build()));
+        assertEquals("BAD_QUOTA", e.errorCode());
+    }
 }

@@ -10,7 +10,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 3 — Place catalogue and data | Passed |
 | 4 — Discovery and search | Passed |
 | 5 — Recommendation and selection | Passed |
-| 6 — Time, budget, pace, scheduling | Not started |
+| 6 — Time, budget, pace, scheduling | Passed |
 | 7 — Route ordering and navigation | Not started |
 | 8 — Road-trip planner | Not started |
 | 9 — Itinerary UI and editing | Not started |
@@ -150,3 +150,50 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 **Gate:** preferences change results (tested); selection is diverse (Set Cover covers every coverable interest); exclusions are respected; uncovered interests are visible; results are reproducible from the seed (same seed gives an equal result; any seed gives the same picks).
 
 **Next phase prerequisites (Phase 6):** the trip model (V4 tables `trips`, `trip_days`, `itinerary_stops`), budget model, workload-based pace, and a day-allocation heuristic consuming `selected` + `fill`.
+
+## Phase 6 report — Time, budget, pace and multi-day scheduling (passed)
+
+**Checklist:** all 17 items done (see `IMPLEMENTATION.md`).
+- **Budget:** total or per-person budget with party-size conversion (D25). Each cost keeps its basis and confidence. Unknown cost stays null and is listed in `unknownItems`, never zero.
+- **Durations and windows:** visit duration ranges come from the pace (D22), inside daily time windows with per-day overrides (start, end, pace, return to base).
+- **Meals and buffers:** meal breaks are inserted between stops, or a food stop at mealtime counts as the meal (D24). Each pace sets a transition buffer.
+- **Opening hours:** parsed OSM syntax is enforced against the weekday of each trip date. Curated seasonal closures are checked per day.
+- **Workload:** each day reports window, activity, travel, meal, buffer, wait and free minutes, utilisation, stop count, high-intensity stops, region transitions, intensity load and a derived label.
+- **Scheduling:** `ItineraryPlanner`, a greedy insertion heuristic (plan §5.6). Fixed bookings come first, then kept stops, then must-visits, then optional stops ranked by uncovered-interest gain and relevance per minute of added burden. Moving to another region costs a 30-minute penalty. Repeated categories are penalised.
+- **Repair:** a bounded pass drops up to 3 lowest-value non-mandatory stops from one day to fit a must-visit. A second pass drops the lowest-value optional stops until the known maximum fits a hard budget. Every repair is reported.
+- **Unplanned items:** set-cover picks that could not be scheduled and removed stops are listed with reasons. Each uncovered interest is explained. Hard constraint conflicts return 422 `INFEASIBLE_PLAN` or `BUDGET_INFEASIBLE` with figures and suggested relaxations.
+- **Pace tests:** relaxed, balanced and packed plans are tested; relaxed has more free time and fewer stops.
+
+**New:**
+- API: `POST /api/v1/itineraries/generate`. Re-planning is the same call with edits (D20).
+- Catalogue: opening hours are loaded per place (VERIFIED preferred).
+- Recommendation engine: `quotaPerInterest`; `fill` returns the whole pool (D26).
+- Logging: one `algorithm_runs` row per plan, `greedy-day-insertion+bounded-repair`, with workload, repairs and insertion evaluations.
+
+**Commands and results:**
+- `./mvnw -o verify`: 158 tests, 0 failures, 0 errors.
+  - New tests: `OpeningHoursTest` 8, `ItineraryPlannerTest` 16, `ItineraryApiTest` 5, plus one in `RecommendationEngineTest`.
+  - The final repackage step failed only because the running local server held the jar (Windows file lock).
+  - `spotless:check` is clean, and `package` succeeded after the server was stopped.
+- Live check against Postgres. Request: Candolim base, 3 days from 2026-12-14, party of 2, beach 5 / food 4 / heritage 4 / adventure 2, flexible ₹30,000, food ₹1,200 per person per day, ₹4,000 per night, fuel ₹101/l at 15 km/l.
+  - Result: 62 ms; 16 stops including beaches, Kaurati's Caves, Fort Aguada, Aguada Jail, museums and temples; all 4 interests covered; daily utilisation 0.66–0.69.
+  - Budget: known maximum ₹15,555, status INCOMPLETE because entry costs are unknown.
+  - The same trip at RELAXED pace has utilisation 0.50–0.54 with 141–241 free minutes per day. A 7-day PACKED plan takes 115 ms.
+
+**Known limits:**
+- Travel times are straight-line estimates until Phase 7.
+- Stop order within a day is insertion order; Double-Tree ordering comes in Phase 7.
+- 3,370 activities have no sourced opening hours. They are scheduled with a warning.
+- No itinerary UI yet (Phase 9).
+
+**Gate:**
+- Hard budget and time limits are never silently violated (tests: hard budget caps stops, mandatory over-budget → 422, too-long must-visit → 422, impossible booking → 422).
+- Unknown cost is not zero (tested).
+- Day timelines fit (asserted in planner and API tests).
+- Infeasible plans explain why (conflicts, relaxations, unscheduled reasons, uncovered reasons).
+- Edits re-plan safely: kept stops stay on their day, new avoids are honoured, and repair reports what it drops.
+
+**Next phase prerequisites (Phase 7):**
+- Q2 routing decision (OSRM or labelled estimate).
+- Per-day distance matrix from the scheduled stops.
+- Double-Tree reordering must keep fixed bookings and meal timing.

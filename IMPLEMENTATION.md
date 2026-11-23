@@ -1233,23 +1233,23 @@ Goal: choose relevant and diverse places.
 
 Goal: turn selections into a feasible day-wise itinerary.
 
-- [ ] Implement total/per-person budget.
-- [ ] Implement party-size conversion.
-- [ ] Implement cost basis and confidence.
-- [ ] Implement unknown-cost treatment.
-- [ ] Implement activity-duration ranges.
-- [ ] Implement daily time windows.
-- [ ] Implement meal/rest buffers.
-- [ ] Implement opening-hour checks where verified.
-- [ ] Implement trip-level pace.
-- [ ] Implement day-level pace overrides.
-- [ ] Implement workload metrics.
-- [ ] Implement greedy day allocation/insertion.
-- [ ] Implement schedule repair.
-- [ ] Keep mandatory stops fixed.
-- [ ] Report unscheduled activities/uncovered interests.
-- [ ] Implement hard vs flexible constraints.
-- [ ] Test relaxed, balanced and packed plans.
+- [x] Implement total/per-person budget.
+- [x] Implement party-size conversion.
+- [x] Implement cost basis and confidence.
+- [x] Implement unknown-cost treatment.
+- [x] Implement activity-duration ranges.
+- [x] Implement daily time windows.
+- [x] Implement meal/rest buffers.
+- [x] Implement opening-hour checks where verified.
+- [x] Implement trip-level pace.
+- [x] Implement day-level pace overrides.
+- [x] Implement workload metrics.
+- [x] Implement greedy day allocation/insertion.
+- [x] Implement schedule repair.
+- [x] Keep mandatory stops fixed.
+- [x] Report unscheduled activities/uncovered interests.
+- [x] Implement hard vs flexible constraints.
+- [x] Test relaxed, balanced and packed plans.
 
 **Acceptance gate:** Hard budget/time constraints are never silently violated; unknown cost is not zero; day timelines fit; infeasible plans explain why; edits can trigger safe re-planning.
 

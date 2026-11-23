@@ -75,7 +75,7 @@ public final class RecommendationEngine {
         // Quickselect with per-interest quotas.
         int k = Math.min(req.pool(), eligible.size());
         Map<String, Integer> quotas = new TreeMap<>();
-        if (k > 0) for (String i : weights.keySet()) quotas.put(i, Math.min(3, k / weights.size()));
+        if (k > 0) for (String i : weights.keySet()) quotas.put(i, Math.min(req.quota(), k / weights.size()));
         CategoryAwareSelection<PlaceSummary> pool = CategoryAwareSelector.select(
                 eligible,
                 p -> scores.get(p.id()).total(),
@@ -149,7 +149,6 @@ public final class RecommendationEngine {
 
         List<RecommendationResult.Scored> fill = ranked.stream()
                 .filter(p -> !picked.contains(p.id()))
-                .limit(40)
                 .map(p -> new RecommendationResult.Scored(p, scores.get(p.id())))
                 .toList();
 
@@ -210,6 +209,8 @@ public final class RecommendationEngine {
         if (req.pool() < 1 || req.pool() > 500) throw ApiException.badRequest("BAD_POOL", "poolSize must be 1..500");
         if (req.selections() < 1 || req.selections() > 100)
             throw ApiException.badRequest("BAD_SELECTIONS", "maxSelections must be 1..100");
+        if (req.quota() < 0 || req.quota() > 50)
+            throw ApiException.badRequest("BAD_QUOTA", "quotaPerInterest must be 0..50");
         if (req.travelMonth() != null && (req.travelMonth() < 1 || req.travelMonth() > 12))
             throw ApiException.badRequest("BAD_MONTH", "travelMonth must be 1..12");
         return w;

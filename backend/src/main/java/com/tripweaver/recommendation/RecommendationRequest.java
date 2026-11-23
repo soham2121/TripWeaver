@@ -18,6 +18,7 @@ import java.util.UUID;
  * @param regions hard: restrict to these region slugs (empty = all)
  * @param poolSize K for Quickselect pruning (default 60)
  * @param maxSelections Set Cover greedy pick limit (default 20)
+ * @param quotaPerInterest Quickselect slots reserved per requested interest, capped at K/|interests| (default 3)
  * @param seed Quickselect seed (default 42)
  */
 public record RecommendationRequest(
@@ -34,11 +35,13 @@ public record RecommendationRequest(
         Set<String> regions,
         Integer poolSize,
         Integer maxSelections,
+        Integer quotaPerInterest,
         Long seed) {
 
     public static final int DEFAULT_POOL = 60;
     public static final int DEFAULT_MAX_SELECTIONS = 20;
     public static final long DEFAULT_SEED = 42L;
+    public static final int DEFAULT_QUOTA = 3;
 
     public RecommendationRequest {
         interests = interests == null ? Map.of() : Map.copyOf(interests);
@@ -54,6 +57,10 @@ public record RecommendationRequest(
 
     public int selections() {
         return maxSelections == null ? DEFAULT_MAX_SELECTIONS : maxSelections;
+    }
+
+    public int quota() {
+        return quotaPerInterest == null ? DEFAULT_QUOTA : quotaPerInterest;
     }
 
     public long seedOrDefault() {
@@ -79,6 +86,7 @@ public record RecommendationRequest(
         b.regions = regions;
         b.poolSize = poolSize;
         b.maxSelections = maxSelections;
+        b.quotaPerInterest = quotaPerInterest;
         b.seed = seed;
         return b;
     }
@@ -87,7 +95,7 @@ public record RecommendationRequest(
         private String destination;
         private Map<String, Double> interests = Map.of();
         private Double baseLat, baseLon, maxEntryCostPerPerson;
-        private Integer travelMonth, dayMinutes, poolSize, maxSelections;
+        private Integer travelMonth, dayMinutes, poolSize, maxSelections, quotaPerInterest;
         private Set<UUID> mustVisit = Set.of(), avoid = Set.of();
         private boolean requireWheelchair;
         private Set<String> regions = Set.of();
@@ -154,6 +162,11 @@ public record RecommendationRequest(
             return this;
         }
 
+        public Builder quotaPerInterest(Integer v) {
+            quotaPerInterest = v;
+            return this;
+        }
+
         public Builder seed(Long v) {
             seed = v;
             return this;
@@ -174,6 +187,7 @@ public record RecommendationRequest(
                     regions,
                     poolSize,
                     maxSelections,
+                    quotaPerInterest,
                     seed);
         }
     }

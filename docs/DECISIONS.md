@@ -76,3 +76,40 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 ## D19 — Set Cover picks one place per interest; scheduler fills the rest
 - **Decision:** Set Cover guarantees diversity (each requested interest covered once, weighted). Extra activities for multi-day trips come from the ranked pool ("fill") during day allocation (Phase 6).
 - **Why:** This keeps the classical set-cover objective intact instead of inventing a multicover variant.
+
+## D20 — Stateless itinerary endpoint; trip persistence moves to Phase 9/10
+- **Decision:** Phase 6 adds `POST /api/v1/itineraries/generate`. It persists only the `algorithm_runs` row. Re-planning is the same call carrying the user's edits: `keepStops`, `fixedStops`, `mustVisit` and `avoid`. The V4 trip tables (planned in the Phase 5 notes) move to Phase 9/10, where trips get owners, roles and optimistic locking.
+- **Why:** Trips need an owner (Phase 10 auth) and a version column. A table added now would be rebuilt then. The planner itself is pure, so persistence can wrap it later without changes.
+- **Cost if wrong:** A refresh loses an unsaved plan until Phase 9.
+
+## D21 — Straight-line travel estimate until routing (Phase 7)
+- **Decision:** Leg time = haversine × 1.3 road factor at an assumed speed per mode, plus a per-leg overhead. Car and taxi: 28 km/h + 5 min. Scooter: 25 km/h + 3 min. Walking: 4.5 km/h. Every response labels this in `travelBasis` as an estimate.
+- **Why:** Phase 6 needs travel minutes to check day windows. Road routing (Q2) belongs to Phase 7.
+- **Cost if wrong:** Hilly or congested legs are underestimated. The pace utilisation caps leave slack.
+
+## D22 — Pace parameters
+- **Decision:**
+
+  | Pace | Max (visit + travel) / window | Buffer per stop | Meal | Max stops | Max HIGH-intensity | Visit length |
+  |---|---|---|---|---|---|---|
+  | RELAXED | 0.55 | 20 min | 75 min | 4 | 1 | top of range |
+  | BALANCED | 0.70 | 15 min | 60 min | 6 | 1 | middle |
+  | PACKED | 0.85 | 10 min | 45 min | 8 | 2 | bottom of range |
+
+- The caps apply to optional stops only. Fixed bookings, must-visits and kept stops are bound only by the hard day window. The day label shown is derived from actual utilisation, so a packed day with few candidates can be labelled BALANCED.
+- **Why:** These are simple and explainable values. They are constants in `Pace`.
+
+## D23 — Opening hours: parsed subset, enforced where sourced
+- **Decision:** `OpeningHours` parses `24/7`, weekday ranges and lists, multiple time ranges, `off`/`closed`, and rule override. Months, sunrise, `+` and comments are not parsed. Parsed hours from any sourced record (OSM PROVIDER_SOURCED or curated VERIFIED, with VERIFIED preferred) are hard constraints. Unparseable hours are labelled UNPARSED and places without hours are labelled UNKNOWN; both are scheduled with a warning.
+- **Why:** Blocking all places with unknown hours would empty the plan (only 313 places have hours). Guessing hours is forbidden.
+
+## D24 — Meals and food stops
+- **Decision:** A lunch break (from 12:30) and, when the day reaches past 20:30, a dinner break are inserted at the first gap between stops. A restaurant, cafe or fast-food stop that starts between 30 minutes before the meal and its latest time (lunch 14:30, dinner 21:30) counts as that meal. At most 2 food stops per day; the variety penalty groups all eating places together.
+- **Why:** Without this, the large OSM restaurant catalogue filled whole days with restaurants next to a separate lunch break.
+
+## D25 — Budget model
+- **Decision:** A per-person cost is multiplied by the party size; other bases (group, vehicle, item) are counted once. Food (per person per day), accommodation (per night) and fuel price and mileage are user-entered. Without them those lines are UNKNOWN, never zero. Fuel = road km × vehicles / mileage × price, labelled CURATED_ESTIMATE because the distance is an estimate. A hard budget is checked against the known **maximum**. Optional stops that would break it are skipped; mandatory stops that break it return 422 `BUDGET_INFEASIBLE`. Unknown items make the status INCOMPLETE. Taxi fares and tolls/parking are unknown (tolls belong to road trips, Phase 8).
+
+## D26 — Trip-scaled candidate pool
+- **Decision:** The planner asks the recommendation engine for K = 40 × days (max 500) with `quotaPerInterest` = 3 × days (max 15, still capped at K/|interests|). `fill` now returns the whole remaining pool, not only the first 40. The preview endpoint keeps K = 60 and quota 3.
+- **Why:** With 3 reserved slots per interest, a 3-day Goa plan ran out of non-food candidates by day 3.

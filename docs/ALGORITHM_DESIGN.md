@@ -192,3 +192,37 @@ Example on the real Goa catalogue, 2026-11-23, Postgres:
 - **Ranking-only baseline:** 4 beaches, leaving adventure, food and heritage uncovered.
 - **Heap:** 118 gain evaluations vs 234 for full recomputation; identical picks.
 - **Time:** whole pipeline 36.8 ms.
+
+---
+
+## Supporting heuristic: day allocation and schedule repair (Phase 6)
+
+This is product logic, not an assessed algorithm. It is a heuristic and does not guarantee a globally optimal itinerary. The code is in `planning/ItineraryPlanner` (pure).
+
+**Day simulation** (`simulate(day, order)`): walk the stops in order from the base at the day start. For each stop:
+1. Insert a pending meal break if the time has passed the meal time. A food stop next may itself become the meal.
+2. Add the travel estimate.
+3. Reject the order on a seasonal closure.
+4. Wait for a fixed booking time. Reject if it is already late.
+5. Move the start to the earliest time that fits a parsed opening-hours window on that weekday. Reject if none fits.
+6. Reject if the visit would end after the day end.
+7. Add the pace buffer.
+
+After the last stop, return to the base if set and reject if that ends after the day end. The result carries the timeline, meals and workload metrics. One simulation costs O(n) for n stops.
+
+**Placement order**
+1. Fixed bookings at their day and time. Any failure → 422 `INFEASIBLE_PLAN`.
+2. Kept stops: cheapest feasible position on their own day, else on any day.
+3. Must-visits: cheapest feasible position on any day, ignoring pace caps. If there is none, repair: for each day, drop the r = 1..3 lowest-value non-mandatory stops, and keep the day whose dropped value is smallest. If no repair works → 422 with the reasons collected from all simulations.
+4. Hard-budget check on fixed costs plus mandatory stops → 422 `BUDGET_INFEASIBLE`.
+5. Greedy fill. Each round evaluates every remaining candidate c, day d and position i. An insertion is feasible when the simulation succeeds, the pace caps hold (utilisation, stops, high-intensity stops, food stops), and the known spend stays within a hard budget. The best feasible insertion has the highest value:
+
+   `value = (uncoveredWeight(c) + 0.5·relevance(c)) / (1 + 0.5·sameKindCount) / (1 + burden/120)`
+
+   - `burden` = added (visit + travel + buffer + wait) minutes + 30 × added region transitions.
+   - Ties go to the earlier day, earlier position and smaller id.
+6. Hard-budget repair: once fuel is known, drop the lowest-value optional stop while the known maximum exceeds the limit.
+
+**Complexity.** Each greedy round costs O(C · D · n²) for C candidates, D days and n stops per day. The 7-day packed demo needed 215,786 simulations and took 115 ms.
+
+**Why it is not optimal.** Insertion is myopic: an early cheap insertion can block a better combination later. Repair is bounded to 3 removals on one day. Stop order is insertion order; Phase 7 reorders each day with Double-Tree.
