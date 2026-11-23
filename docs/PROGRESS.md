@@ -420,3 +420,10 @@ Bugs found and fixed:
 - **Expense amounts in history** showed "₹1200.0". They now show "₹1200" (test added).
 
 Found, not fixed (needs a decision): nightlife places with no sourced opening hours can be scheduled in the morning (Viva Pub at 09:04 in the beach-weekend demo).
+
+## Open items (noted 2026-11-23)
+
+- **Multi-day itinerary returns a server error.** `ItineraryPlanner.time()` calls `LocalTime.of` with hour 24 when a simulated time reaches midnight (path: `fillOptional` → `simulate`). Seen in the backend log as `DateTimeException: Invalid value for HourOfDay (valid values 0 - 23): 24`. Not fixed yet.
+- **Road trip updates.** Requested by the user; details to be agreed.
+- **Nightlife hours.** Places with no sourced hours can be scheduled in the morning (Viva Pub at 09:04). Proposed fix: evening-only hours, labelled as an estimate. Waiting on a decision.
+- **Re-test the app in the browser** after these fixes.
