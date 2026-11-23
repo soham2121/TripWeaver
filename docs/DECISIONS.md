@@ -31,3 +31,10 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 
 ## D8 — Modular monolith
 - **Decision:** One Spring Boot app, packages per module (plan §9.2). No Redis, no microservices.
+
+## D9 — Local ports: API 8088, PostgreSQL host port 5433
+- **Decision:** Backend defaults to port 8088; Docker Postgres maps to host port 5433; JDBC URL uses `127.0.0.1`.
+- **Why:** On the dev machine, port 8080 is taken by a Jenkins service and `[::1]:5432` by a WSL relay (another Postgres). Overridable via `PORT` and `DB_URL`.
+
+## D10 — Formatting and linting
+- **Decision:** Java: Spotless + Palantir Java Format, checked in `mvn verify`. Frontend: oxlint (Vite template default) + Prettier.

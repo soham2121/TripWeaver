@@ -5,7 +5,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | Phase | Status |
 |---|---|
 | 0 — Inspection, scope lock, decisions | Passed |
-| 1 — Skeleton and tooling | Not started |
+| 1 — Skeleton and tooling | Passed |
 | 2 — Core algorithms | Not started |
 | 3 — Place catalogue and data | Not started |
 | 4 — Discovery and search | Not started |
@@ -37,3 +37,14 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - **Optional credentials:** `GOOGLE_PLACES_API_KEY` (Phase 11, optional). Core app needs none.
 - **Data providers and licence risks:** OSM via Geofabrik (ODbL: attribution, share-alike on derived DB); Google Places (optional, strict storage rules, no bulk storage); OpenFreeMap/OSM tiles (attribution, usage policy); OSRM (BSD, self-hosted); official tourism sites (field-level source URL + date).
 - **Secrets/raw data excluded:** `.gitignore` covers `.env*`, `data/raw/`, `data/processed/`.
+
+## Phase 1 report — Skeleton and tooling (passed)
+
+- **Created:** `backend/` (Spring Boot 4.1.3, Java 25, Flyway, JPA, Security, Validation, Actuator), `frontend/` (React 19, Vite 8, TypeScript, Tailwind 4, Vitest, RTL, oxlint, Prettier), `docker-compose.yml`, `.env.example`, `.gitattributes`, `.github/workflows/ci.yml`, `README.md`.
+- **Health endpoint:** `GET /api/v1/health`. **Error format:** `ApiError {errorCode, message, details}` via `GlobalExceptionHandler`; no stack traces.
+- **Commands run and results:**
+  - `mvn verify` (backend): 3 tests, 3 passed; Spotless check passed.
+  - `npm test` (frontend): 2 tests, 2 passed. `npm run lint`: no findings. `npm run build`: success. `npm run format:check`: clean.
+  - Backend jar against Docker PostgreSQL: Flyway applied V1; `curl localhost:5173/api/v1/health` (through Vite proxy) returned `{"status":"UP",...}`.
+- **CI:** workflow written; not executed (no remote).
+- **Security note:** `SecurityConfig` permits all requests until Phase 10 adds login and trip permissions. No protected data exists yet.
