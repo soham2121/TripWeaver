@@ -19,6 +19,8 @@ class GoaCatalogueImportTest {
     static final Path EXTRACT = Path.of("../data/sample/goa-osm-extract.json");
     static final Path REGIONS = Path.of("../data/curated/goa-regions.json");
     static final Path CURATED = Path.of("../data/curated/goa-curated.json");
+    static final String GOA_IDS =
+            "SELECT p.id FROM places p JOIN destinations d ON d.id = p.destination_id WHERE d.slug = 'goa' ORDER BY p.id";
 
     @Autowired
     CatalogueImportService service;
@@ -29,15 +31,19 @@ class GoaCatalogueImportTest {
     @Test
     void importIsReproducibleAndKeepsProvenance() {
         BuiltCatalogue.Report r1 = service.importFiles(EXTRACT, REGIONS, CURATED, null);
-        List<UUID> ids1 = jdbc.queryForList("SELECT id FROM places ORDER BY id", UUID.class);
+        List<UUID> ids1 = jdbc.queryForList(GOA_IDS, UUID.class);
         BuiltCatalogue.Report r2 = service.importFiles(EXTRACT, REGIONS, CURATED, null);
-        List<UUID> ids2 = jdbc.queryForList("SELECT id FROM places ORDER BY id", UUID.class);
+        List<UUID> ids2 = jdbc.queryForList(GOA_IDS, UUID.class);
 
         assertEquals(r1, r2, "same input, same report");
         assertEquals(ids1, ids2, "stable ids across re-import");
         assertTrue(r1.accepted() > 1000, "expected a real catalogue, got " + r1.accepted());
         assertTrue(r1.rejected().getOrDefault("OUTSIDE_BOUNDARY", 0) > 0, "bbox includes neighbouring states");
-        assertEquals(r1.accepted(), jdbc.queryForObject("SELECT COUNT(*) FROM places WHERE is_active", Integer.class));
+        assertEquals(
+                r1.accepted(),
+                jdbc.queryForObject(
+                        GOA_IDS.replace("SELECT p.id", "SELECT COUNT(*)").replace(" ORDER BY p.id", " AND p.is_active"),
+                        Integer.class));
 
         // Every place has an OSM provenance record.
         assertEquals(

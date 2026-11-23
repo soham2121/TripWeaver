@@ -12,9 +12,11 @@ import com.tripweaver.place.PlaceSummary;
 import com.tripweaver.recommendation.RecommendationEngine;
 import com.tripweaver.recommendation.RecommendationRequest;
 import com.tripweaver.recommendation.RecommendationResult;
+import com.tripweaver.routing.EstimateTravel;
 import com.tripweaver.routing.LatLon;
 import com.tripweaver.routing.NavigationLinks;
 import com.tripweaver.routing.Route;
+import com.tripweaver.routing.RoutingService;
 import com.tripweaver.routing.TransportMode;
 import com.tripweaver.routing.TravelMatrix;
 import com.tripweaver.routing.TravelProvider;
@@ -1047,6 +1049,10 @@ public final class ItineraryPlanner {
                     waypoints.add(new LatLon(t.v().p.lat(), t.v().p.lon()));
                 if (ctx.returnToBase() && !s.stops().isEmpty()) waypoints.add(waypoints.getFirst());
                 Route route = s.stops().isEmpty() ? null : travel.route(waypoints, mode);
+                if (route != null && RoutingService.NO_ROUTE.equals(route.provider())) {
+                    routingWarnings.add("No road route found for day " + ctx.index() + "; drawn as straight lines.");
+                    route = EstimateTravel.INSTANCE.route(waypoints, mode);
+                }
                 if (route != null) routingWarnings.addAll(route.warnings());
                 List<String> dw = new ArrayList<>();
                 for (var m : s.meals())

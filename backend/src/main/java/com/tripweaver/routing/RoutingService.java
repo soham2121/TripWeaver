@@ -26,6 +26,11 @@ import tools.jackson.databind.json.JsonMapper;
 public class RoutingService implements TravelProvider {
 
     private static final Logger log = LoggerFactory.getLogger(RoutingService.class);
+    /** Route provider value when OSRM answers that no road connects the waypoints (not an outage). */
+    public static final String NO_ROUTE = "NO_ROUTE";
+
+    static final class NoRouteException extends RuntimeException {}
+
     public static final String BASIS = "OSRM road network (OpenStreetMap, car profile)";
 
     private final String baseUrl;
@@ -101,6 +106,9 @@ public class RoutingService implements TravelProvider {
             }
             return new Route(
                     "OSRM", BASIS, geometry, legs, total, r.get("distance").asDouble() / 1000, List.of());
+        } catch (NoRouteException e) {
+            return new Route(
+                    NO_ROUTE, "OSRM found no road between the waypoints", List.of(), List.of(), 0, 0, List.of());
         } catch (Exception e) {
             log.warn("OSRM route failed: {}", e.toString());
             return EstimateTravel.INSTANCE.route(waypoints, mode, List.of(UNAVAILABLE));
@@ -116,6 +124,7 @@ public class RoutingService implements TravelProvider {
                 .build();
         HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
         JsonNode body = json.readTree(res.body());
+        if ("NoRoute".equals(body.path("code").asString())) throw new NoRouteException();
         if (res.statusCode() != 200 || !"Ok".equals(body.path("code").asString()))
             throw new IllegalStateException(
                     "OSRM " + res.statusCode() + " " + body.path("code").asString());

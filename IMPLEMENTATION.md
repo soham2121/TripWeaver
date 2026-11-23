@@ -1276,21 +1276,21 @@ Goal: turn each day's locations into an efficient route.
 
 Goal: plan intercity journeys with fixed waypoints and optional detours.
 
-- [ ] Implement road-trip input model.
-- [ ] Implement origin/destination/fixed waypoint handling.
-- [ ] Preserve waypoint order.
-- [ ] Add maximum driving hours/day.
-- [ ] Add meal/rest break insertion.
-- [ ] Support user-provided overnight stop.
-- [ ] Suggest feasible overnight stops where data exists.
-- [ ] Find attractions within detour thresholds.
-- [ ] Rank optional detours using the recommendation engine.
-- [ ] Optimise detours only between fixed waypoints.
-- [ ] Estimate fuel cost from vehicle assumptions.
-- [ ] Mark toll/accommodation unknown if not sourced.
-- [ ] Generate segment/day navigation links.
-- [ ] Create Mumbai-to-Goa demo.
-- [ ] Test late arrival, impossible driving day, unreachable stops and provider failure.
+- [x] Implement road-trip input model.
+- [x] Implement origin/destination/fixed waypoint handling.
+- [x] Preserve waypoint order.
+- [x] Add maximum driving hours/day.
+- [x] Add meal/rest break insertion.
+- [x] Support user-provided overnight stop.
+- [x] Suggest feasible overnight stops where data exists.
+- [x] Find attractions within detour thresholds.
+- [x] Rank optional detours using the recommendation engine.
+- [x] Optimise detours only between fixed waypoints.
+- [x] Estimate fuel cost from vehicle assumptions.
+- [x] Mark toll/accommodation unknown if not sourced.
+- [x] Generate segment/day navigation links.
+- [x] Create Mumbai-to-Goa demo.
+- [x] Test late arrival, impossible driving day, unreachable stops and provider failure.
 
 **Acceptance gate:** Road trip differs from destination itinerary; fixed stops are preserved; driving/rest constraints are respected; detours remain optional and bounded; estimates have confidence labels.
 

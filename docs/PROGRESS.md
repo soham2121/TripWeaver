@@ -12,7 +12,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 5 — Recommendation and selection | Passed |
 | 6 — Time, budget, pace, scheduling | Passed |
 | 7 — Route ordering and navigation | Passed |
-| 8 — Road-trip planner | Not started |
+| 8 — Road-trip planner | Passed |
 | 9 — Itinerary UI and editing | Not started |
 | 10 — Sharing and collaboration | Not started |
 | 11 — Optional enrichment | Not started |
@@ -238,3 +238,44 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - No visual browser check: the Chrome extension was not connected. Page served (HTTP 200) and component tests pass.
 
 **Next phase prerequisites (Phase 8):** a road-trip input model, Mumbai-to-Goa routing (the western-zone OSRM graph covers it), and segment and overnight handling.
+
+## Phase 8 report — Road-trip planner (passed)
+
+**Checklist:** all 15 items done (see `IMPLEMENTATION.md`).
+- **Corridor data:** Konkan corridor destination built by the existing pipeline: bbox minus Goa, 6,283 places, 830 of them places to stay (D29).
+- **Planner and API:** `POST /api/v1/road-trips/plan` (D30).
+  - Fixed waypoints keep their order; detours are found in a corridor, ranked by the recommendation engine, bounded and optional.
+  - Detours are ordered between fixed ends by Double-Tree open path, with no bound claimed.
+  - Driving days follow daily and continuous limits, with rest and lunch breaks.
+  - Overnight stops are either user waypoints or suggested OSM lodging.
+- **Labels:** fuel CURATED_ESTIMATE; tolls, accommodation and food USER_ENTERED or UNKNOWN; daily Google Maps links.
+- **Routing changes:**
+  - OSRM `NoRoute` is now reported as unreachable rather than as an outage.
+  - The straight-line estimate uses two speeds (D31).
+  - `Polygon` uses the outer/inner rule.
+
+**Commands and results:**
+- `./mvnw -o test spotless:check`: 192 tests, 0 failures. New: `RoadTripPlannerTest` 14, `RoadTripApiTest` 2, `KonkanCatalogueImportTest` 1, `CorridorBoundaryTest` 1, `TransportModeTest` 2, plus 1 in `RoutingServiceTest`.
+- `npm test`: 11 passed (frontend unchanged).
+- **Live demo, OSRM:** Mumbai CSMT → Candolim, max 6 h of driving per day.
+  - 2 days, with an overnight at OSM-listed "Manjunath" (Sindhudurg).
+  - 2 heritage detours, totalling 178 of the 180 allowed minutes.
+  - Rests every 120 min of driving, plus lunch. Arrival day 2 at 11:44. Plan time 114 ms.
+- **Live demo with user waypoints:** Ratnagiri as an overnight stop, then Malvan with a 60-minute stay. Order and stays were kept, and the costs labelled.
+
+**Bugs found and fixed (each test written first):**
+- Waypoint nodes shared between segments overwrote their matrix index, so segment times came out as 0.
+- On a backtracking route, places to stay were assigned to one segment only.
+
+**Known limits:**
+- The API serves requests while the first-run catalogue import is still in progress, which can briefly give an incomplete corridor.
+- No road-trip UI yet (Phase 9).
+- Mid-route lodging coverage in OSM is sparse.
+- Routed travel times assume free-flowing traffic.
+
+**Gate:**
+- The road trip differs from a destination itinerary: segments, driving days and overnights.
+- Fixed stops are preserved (zig-zag test).
+- Driving and rest limits are respected (asserted on every day).
+- Detours are optional and bounded (limits, drop-on-conflict, tight-arrival test).
+- Estimates carry confidence labels.

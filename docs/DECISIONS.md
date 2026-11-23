@@ -138,3 +138,47 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
   - The new order is re-simulated with the real directed legs. It is used only if every hard constraint still holds and the symmetric tour is shorter than the insertion order. Otherwise the insertion order stays, and the response says why.
   - Nearest-neighbour and the exact Held–Karp optimum (days with ≤ 9 stops) are reported for comparison.
 - **Why:** the cheapest-insertion schedule is often already near optimal. On the Goa demo it was within 1–6 min of the exact optimum, and replacing it with a longer tour would be worse for the user. The guarantee applies to the symmetric objective only, not to directed travel time.
+
+## D29 — Konkan corridor as a second destination (`konkan`)
+- **Decision:** Mumbai–Goa road trips need attractions and lodging outside Goa. A second destination is built by the same pipeline, with no algorithm changes:
+  - **Extract:** `OsmExtractTool ... 15.60,72.75,19.10,74.10 -Goa 4`, giving `data/sample/konkan-osm-extract.json` (1.9 MB, ODbL). The area is the bbox minus the Goa boundary.
+  - **Curation:** `data/curated/konkan-regions.json` defines 12 regions anchored at Mumbai, Panvel, Alibag, Lonavala, Mahad, Chiplun, Ratnagiri, Rajapur, Devgad, Malvan, Kudal and Sawantwadi. `konkan-curated.json` is empty.
+  - **Import:** 6,283 places accepted, including 830 places to stay.
+  - **Startup:** the runner imports every destination in `tripweaver.catalogue.destinations` (default `goa,konkan`) that has no places yet.
+- **Why bbox minus Goa:** the Maharashtra relation cannot be assembled from the regional extract, because its far borders are clipped and the mainland ring never closes.
+- **Polygon rule:** `Polygon` now means "odd number of outer rings and even number of inner rings" instead of a global even-odd count. Under even-odd, Goa land south of the bbox would have counted as inside.
+- **Cost if wrong:** curated official facts (hours, fees) exist only for Goa; the corridor uses OSM tags only.
+
+## D30 — Road-trip model and limits
+- **Fixed waypoints:** origin, user waypoints and destination are never reordered.
+- **Detours:**
+  - Candidates are activities that match the interests and lie within max(5 km, 0.5 × `maxDetourMinutes` km) of the routed segment geometry, and more than 3 km from any waypoint.
+  - They are ranked by the recommendation engine with no base location (neutral distance score).
+  - Detours are accepted in rank order while each adds ≤ `maxDetourMinutes` of driving (default 45). The trip takes at most `maxDetours` detours (default 3), and their added driving plus visits stay ≤ `maxTotalDetourMinutes` (default 180).
+  - Detours in one segment are ordered by the shorter of route order and a Double-Tree open path between the segment's fixed ends. No approximation bound is claimed.
+  - Detours are optional. While the plan is infeasible, or needs more days than the plan without detours, the lowest-ranked detour is dropped, with a warning.
+- **Driving rules and their defaults:**
+
+  | Setting | Default |
+  |---|---|
+  | `maxDrivingHoursPerDay` | 7 |
+  | `maxContinuousDrivingMinutes` | 120 |
+  | `restBreakMinutes` | 15 |
+  | Lunch break from 12:30 (`mealMinutes`) | 45 |
+  | `dayStart` / `dayEnd` | 08:00 / 20:00 (hard) |
+  | `departureTime` | 07:00 |
+
+- **Overnight stops:**
+  - A user waypoint with `overnight: true` ends the day there.
+  - Otherwise, when the next leg does not fit, the planner suggests the OSM-listed place to stay within 5 km of the route that leaves the least driving and still fits today's limits.
+  - Suggestions are labelled PROVIDER_SOURCED, with availability and price unknown. A place to stay can serve every segment it lies near.
+- **Costs:**
+  - Fuel is a CURATED_ESTIMATE from user-entered mileage and price.
+  - Tolls, accommodation and food are USER_ENTERED, or UNKNOWN when not entered.
+  - Taxi fares are UNKNOWN.
+- **Stateless:** `POST /api/v1/road-trips/plan` only. The plan's `/detours` and `/segments` endpoints need saved trips and wait for Phase 9/10.
+
+## D31 — Two-speed travel estimate
+- **Decision:** the straight-line fallback drives the first 10 road-km of each leg at local speed (car 28, scooter 25 km/h) and the rest at highway speed (car and taxi 60, scooter 45 km/h).
+- **Why:** with one speed, Mumbai→Goa estimated about 18 h. With two speeds it is about 9 h, against OSRM's free-flow 6.8 h.
+- **Why 10 km:** a larger local share would wrongly penalise splitting a highway leg for a short detour.

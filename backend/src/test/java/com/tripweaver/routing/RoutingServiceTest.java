@@ -106,4 +106,13 @@ class RoutingServiceTest {
         RoutingService rs = new RoutingService(start("{\"code\":\"InvalidQuery\"}", ROUTE), 2000);
         assertEquals("ESTIMATE", rs.matrix(PTS, TransportMode.CAR).provider());
     }
+
+    @Test
+    void osrmNoRouteIsReportedAsUnreachableNotAsAnOutage() throws IOException {
+        RoutingService rs =
+                new RoutingService(start(TABLE, "{\"code\":\"NoRoute\",\"message\":\"Impossible route\"}"), 2000);
+        Route r = rs.route(PTS, TransportMode.CAR);
+        assertEquals("NO_ROUTE", r.provider());
+        assertTrue(r.legs().isEmpty());
+    }
 }

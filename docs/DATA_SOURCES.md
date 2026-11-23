@@ -93,6 +93,20 @@ Other gaps:
 
 Targets in plan §4.1.D were 80–100 restaurants, 50–70 beaches and viewpoints, 40–60 heritage and 30–50 nature places. All are met by count. Costs and hours are the real coverage gap. Hard-budget plans therefore report incomplete estimates instead of assuming zero.
 
+## 5b. Konkan corridor catalogue (Phase 8)
+
+Used for Mumbai–Goa road trips. Built from the same Geofabrik extract with:
+
+```bash
+cd backend
+./mvnw -q compile exec:java -Dexec.mainClass=com.tripweaver.place.ingest.OsmExtractTool \n  -Dexec.args="../data/raw/western-zone-261122.osm.pbf ../data/sample/konkan-osm-extract.json 15.60,72.75,19.10,74.10 -Goa 4"
+```
+
+- **Area:** bbox lat 15.60–19.10, lon 72.75–74.10, minus the Goa boundary.
+- **Import:** 7,380 candidates, 6,283 accepted (830 places to stay), 102 merged, 995 rejected because they lie inside Goa.
+- **Regions:** 12 regions in `data/curated/konkan-regions.json`.
+- **Curated facts:** none yet. Hours and costs come only from OSM tags; everything else is unknown.
+
 ## 6. Road routing (Phase 7)
 
 - **Engine:** self-hosted OSRM `ghcr.io/project-osrm/osrm-backend:v6.0.0`, car profile, Contraction Hierarchies. Built by `scripts/osrm-prepare.sh` from the same Geofabrik western-zone extract (2026-11-22). The output in `data/osrm/` is git-ignored.

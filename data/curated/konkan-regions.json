@@ -1,0 +1,18 @@
+{
+  "destination": { "slug": "konkan", "name": "Mumbai–Goa Konkan corridor (Maharashtra)", "osmBoundaryName": "bbox minus Goa", "osmAdminLevel": "4" },
+  "note": "Road-trip corridor between Mumbai and Goa: the bbox lat 15.60–19.10, lon 72.75–74.10 minus the Goa boundary (in practice coastal and Sahyadri Maharashtra). Regions are a TripWeaver curation; each place joins the nearest anchor settlement. Heuristic grouping, not administrative boundaries.",
+  "regions": [
+    { "slug": "mumbai", "name": "Mumbai", "anchor": "Mumbai" },
+    { "slug": "panvel", "name": "Panvel and Navi Mumbai", "anchor": "Panvel" },
+    { "slug": "alibag", "name": "Alibag and the Raigad coast", "anchor": "Alibag" },
+    { "slug": "lonavala", "name": "Lonavala and the Sahyadri ghats", "anchor": "Lonavala" },
+    { "slug": "mahad", "name": "Mahad and inland Raigad", "anchor": "Mahad" },
+    { "slug": "chiplun", "name": "Chiplun and Dapoli", "anchor": "Chiplun" },
+    { "slug": "ratnagiri", "name": "Ratnagiri", "anchor": "Ratnagiri" },
+    { "slug": "rajapur", "name": "Rajapur", "anchor": "Rajapur" },
+    { "slug": "devgad", "name": "Devgad", "anchor": "Devgad" },
+    { "slug": "malvan", "name": "Malvan and the Sindhudurg coast", "anchor": "Malvan" },
+    { "slug": "kudal", "name": "Kudal", "anchor": "Kudal" },
+    { "slug": "sawantwadi", "name": "Sawantwadi and Amboli", "anchor": "Sawantwadi" }
+  ]
+}

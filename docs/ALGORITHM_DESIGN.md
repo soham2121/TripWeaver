@@ -244,3 +244,27 @@ After the last stop, return to the base if set and reject if that ends after the
 6. **Geometry and navigation.** OSRM `/route` returns the day's polyline and directed legs (estimate fallback: straight segments). Google Maps URLs carry ≤ 9 waypoints each and are chained.
 
 Tests cover: each stop visited once, the closed tour returning to base, MST ≤ exact, Double-Tree ≤ 2·exact, no claim on non-metric times, no claim on open paths, fixed booking times kept after reordering, and a routing outage still producing a labelled plan.
+
+---
+
+## Product integration: road trips (Phase 8)
+
+`roadtrip/RoadTripPlanner` (pure; heuristic) runs these steps:
+
+1. **Segments.** Fixed waypoints are kept in the given order. Each consecutive pair is routed directly, which gives the geometry used as the corridor. A pair with no road route makes the trip infeasible.
+2. **Corridor candidates.** Distance from each catalogue place to the segment polyline: equirectangular point-to-piece distance over at most 400 vertices. The result also gives the place's position along the route.
+   - **Detours:** activities matching the interests within the detour corridor.
+   - **Places to stay:** within 5 km, up to 3 nearest per 5% slice of each segment it lies near.
+3. **Ranking.** Detour candidates are ranked with Randomized Quickselect and lazy-greedy Weighted Set Cover (the same engine as itineraries; no base location).
+4. **Added time.** One travel matrix per segment over {ends, candidates, places to stay}. Added driving = d(A,p) + d(p,B) − d(A,B).
+5. **Selection and ordering.** Greedy selection in rank order under three limits: per detour, count, and total time. Within a segment, the order is the shorter of route order and `DoubleTreeTsp.openPath(sym, A, B)`. The endpoints are fixed and no bound is claimed.
+6. **Day simulation.**
+   - **Driving:** in chunks of at most `maxContinuousDrivingMinutes`, separated by rest breaks; lunch is inserted at 12:30 or at the next stop.
+   - **Stops:** visits are checked against parsed opening hours. Waypoint stays and user overnight stops are applied.
+   - **Leg that does not fit:** when the next leg would exceed the daily driving limit or the day end, the planner picks the place to stay that fits today and minimises the remaining driving. If none exists, the day is impossible.
+7. **Repair.** The plan without detours must be feasible. Detours are then dropped, lowest ranked first, while the plan fails or needs more days than the plan without detours.
+
+**Limits:**
+- Roadside rest and lunch locations are approximate.
+- Traffic is not modelled.
+- Overnight suggestions depend on OSM listing coverage, which is sparse mid-route on NH66.

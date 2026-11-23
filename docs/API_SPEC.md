@@ -166,3 +166,50 @@ Errors:
   - `totalMinutes`, `totalKm`, `warnings[]`.
   - A closed day has `stops + 1` legs and ends at the base.
 - `days[].navigationUrls[]`: Google Maps directions URLs with at most 9 waypoints each, chained (each segment starts where the previous one ended). Travel mode is `driving`, or `walking` for WALK.
+
+## Road trips (Phase 8)
+
+### `POST /road-trips/plan`
+Stateless. Places come from every destination catalogue (Goa and the Konkan corridor).
+
+```json
+{ "origin": {"name": "Mumbai (CSMT)", "lat": 18.9398, "lon": 72.8355},
+  "destination": {"name": "Candolim", "lat": 15.5202, "lon": 73.7659},
+  "waypoints": [{"name": "Ratnagiri", "lat": 16.9934, "lon": 73.2954, "overnight": true},
+                {"placeId": "<uuid>", "stayMinutes": 60}],
+  "departureDate": "2026-12-14", "departureTime": "07:00", "arriveBy": "2026-12-15T18:00",
+  "maxDrivingHoursPerDay": 7, "maxContinuousDrivingMinutes": 120, "restBreakMinutes": 15, "mealMinutes": 45,
+  "dayStart": "08:00", "dayEnd": "20:00",
+  "interests": {"heritage": 5, "beach": 4}, "maxDetourMinutes": 45, "maxDetours": 3, "maxTotalDetourMinutes": 180,
+  "suggestOvernight": true, "partySize": 2, "transport": "CAR",
+  "mileageKmPerLitre": 15, "fuelPricePerLitre": 101, "tollsTotal": 900, "accommodationPerNight": 3500,
+  "foodPerPersonPerDay": 800, "avoid": ["<uuid>"], "seed": 42 }
+```
+
+Request rules:
+- `origin` and `destination` are required.
+- Each waypoint needs `lat`/`lon` or a `placeId`.
+- Waypoints are never reordered.
+- Without `interests` the plan has no detours.
+
+Response: `{ runId, durationMicros, roadTrip }`. `roadTrip` contains:
+- Trip totals: `departure`, `arrival`, `totalDrivingMinutes`, `totalKm`, `nights`, `detourCandidates`.
+- `days[]`:
+  - Fields: `day`, `date`, `start`, `end`, `drivingMinutes`, `km`, `longestContinuousDrivingMinutes`, `items[]`, `overnight`, `navigationUrls[]`.
+  - Each item has `type`, `name`, `placeId`, `lat`, `lon`, `start`, `end`, `minutes`, `km` and `note`.
+  - Item types: DEPART, DRIVE, REST, MEAL, DETOUR, WAYPOINT, OVERNIGHT, ARRIVE.
+  - `overnight`: `name`, `placeId`, `lat`, `lon`, `kind` (USER or SUGGESTED), `confidence` and `note`.
+- `segments[]`, one per pair of consecutive fixed waypoints:
+  - Fields: `index`, `from`, `to`, `directMinutes`, `directKm`, `detours[]`, `ordering`, `route` (OSRM or estimate geometry through the visited points).
+  - Each detour: `place`, `addedDriveMinutes`, `visitMinutes`, `covers[]`, `score`, `reason`.
+  - `ordering`: `method`, `applied`, `routeOrderMinutes`, `doubleTreeMinutes`, `guaranteeApplies` (always false here).
+- `budget`: same shape as itinerary budgets. Line categories: FUEL, TOLLS, ACCOMMODATION, FOOD, LOCAL_TRANSPORT, ENTRY_FEES, ENTRY_OR_ACTIVITY.
+- Labels: `warnings[]` (dropped detours, uncovered interests, routing fallback), `travelProvider`, `travelBasis`, `disclaimer`, `seed`.
+
+Errors:
+- 400: `BAD_WAYPOINT`, `UNKNOWN_PLACE`, `BAD_TRANSPORT` (walking), `BAD_DRIVING_LIMIT`, `BAD_BREAK`, `BAD_DAY_WINDOW`, `BAD_DETOUR_LIMIT`, `BAD_PARTY`, `BAD_COST`.
+- 422: `INFEASIBLE_PLAN`, with `details.conflicts` and `details.suggestedRelaxations`. A late arrival also includes `details.estimatedArrival`. Causes:
+  - No road between two waypoints.
+  - No place to stay reachable within the day's limits.
+  - Late arrival at an overnight waypoint.
+  - Arrival after `arriveBy`.

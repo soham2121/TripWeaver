@@ -42,6 +42,15 @@ public class PlaceCatalogue {
         return idx;
     }
 
+    /** Every active place of every destination (road trips cross destinations). */
+    public List<PlaceSummary> allPlaces() {
+        Map<String, PlaceSearchIndex> m = indexes;
+        if (m == null) m = reload();
+        List<PlaceSummary> all = new ArrayList<>();
+        m.keySet().stream().sorted().forEach(k -> all.addAll(indexes.get(k).all()));
+        return all;
+    }
+
     /** Sourced opening hours (a VERIFIED source preferred), or null when none are known. */
     public PlaceHours hours(UUID placeId) {
         if (indexes == null) reload();

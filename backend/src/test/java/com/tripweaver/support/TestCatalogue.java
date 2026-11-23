@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Imports the bundled real Goa catalogue into the shared test database once. */
+/** Imports the bundled real catalogues into the shared test database once per destination. */
 @Component
 public class TestCatalogue {
 
@@ -17,13 +17,20 @@ public class TestCatalogue {
         this.jdbc = jdbc;
     }
 
-    public synchronized void ensureGoaImported() {
-        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM places", Integer.class);
+    public void ensureGoaImported() {
+        ensureImported("goa");
+    }
+
+    public synchronized void ensureImported(String slug) {
+        Integer n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM places p JOIN destinations d ON d.id = p.destination_id WHERE d.slug = ?",
+                Integer.class,
+                slug);
         if (n != null && n > 0) return;
         service.importFiles(
-                Path.of("../data/sample/goa-osm-extract.json"),
-                Path.of("../data/curated/goa-regions.json"),
-                Path.of("../data/curated/goa-curated.json"),
+                Path.of("../data/sample/" + slug + "-osm-extract.json"),
+                Path.of("../data/curated/" + slug + "-regions.json"),
+                Path.of("../data/curated/" + slug + "-curated.json"),
                 null);
     }
 }
