@@ -38,3 +38,20 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 
 ## D10 — Formatting and linting
 - **Decision:** Java: Spotless + Palantir Java Format, checked in `mvn verify`. Frontend: oxlint (Vite template default) + Prettier.
+
+## D11 — OSM import pipeline in Java, derived Goa extract committed
+- **Decision:** `OsmPbfExtractor` (osmpbf 1.8.0 library for PBF decoding only) streams the Geofabrik western-zone PBF in three passes into `data/sample/goa-osm-extract.json` (1.2 MB, ODbL). `CatalogueBuilder` (pure) turns it into catalogue rows. `CatalogueWriter` upserts with deterministic UUIDs. The app auto-imports when the `places` table is empty.
+- **Why:** The demo must work offline without downloading 222 MB. ODbL permits redistributing the derived database with attribution under the same licence. The raw PBF stays out of Git.
+- **Cost if wrong:** Re-importing a newer extract changes the counts. Ids stay stable for places that still exist.
+
+## D12 — Travel regions by nearest anchor settlement
+- **Decision:** 12 curated regions, each anchored at an OSM settlement. A place joins the nearest anchor (a Voronoi-style assignment).
+- **Why:** India's OSM admin levels below the state are inconsistent. Travel regions differ from talukas anyway.
+- **Cost if wrong:** Places near region borders can land in a neighbouring region. Grouping is a planning aid, not a hard constraint.
+
+## D13 — Places of worship need a notability signal
+- **Decision:** Keep `amenity=place_of_worship` only with historic, heritage, wikidata, wikipedia or tourism=attraction tags.
+- **Why:** Without this filter, thousands of small chapels and shrines flood the heritage and spiritual candidates.
+
+## D14 — Visit durations are category defaults
+- **Decision:** Visit duration ranges come from category defaults, labelled CURATED_ESTIMATE ("TripWeaver category default for X"). No per-place durations are invented.

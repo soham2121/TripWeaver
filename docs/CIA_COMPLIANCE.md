@@ -9,7 +9,7 @@ Maps each CIA requirement to evidence in the repository. A row is marked done on
 | ≥2 syllabus techniques, ≥1 from Units 4–6 | Trie (U4), Set Cover (U5), Metric TSP (U5), Heap (U2), Quickselect (U1/6) | Implemented and tested (Phase 2) |
 | CO5 randomized algorithm | Randomized Quickselect, seeded, `algorithms/selection` | Implemented and tested; product integration in Phase 5 |
 | Original Java implementations | `backend/src/main/java/com/tripweaver/algorithms/**` | Done; `AlgorithmIsolationTest` |
-| Real or realistic synthetic data | OSM Goa import, `docs/DATA_SOURCES.md` | Pending (Phase 3) |
+| Real or realistic synthetic data | Real OSM Goa catalogue (5,192 places) + official curated fields; `docs/DATA_SOURCES.md` | Done (Phase 3) |
 | ≥5 correctness tests per core algorithm incl. edge case | `docs/CORRECTNESS.md`: Trie 12, Quickselect 15, Set Cover 15, Heap 10, TSP 12 | Done |
 | Benchmarks at ≥3 increasing sizes | `docs/BENCHMARKS.md`, raw CSV | Pending (Phase 12) |
 | Baseline comparison | `docs/BENCHMARKS.md` | Pending (Phase 12) |

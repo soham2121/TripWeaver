@@ -1,0 +1,18 @@
+{
+  "destination": { "slug": "goa", "name": "Goa", "osmBoundaryName": "Goa", "osmAdminLevel": "4" },
+  "note": "Travel regions are a TripWeaver curation. Each place is assigned to the region whose anchor settlement (looked up by name in the OSM extract) is nearest. This is a heuristic grouping, not an administrative boundary.",
+  "regions": [
+    { "slug": "north-coast", "name": "North Goa coast (Candolim, Calangute, Baga, Anjuna)", "anchor": "Calangute" },
+    { "slug": "far-north", "name": "Far North (Vagator, Morjim, Mandrem, Arambol)", "anchor": "Mandrem" },
+    { "slug": "mapusa", "name": "Mapusa and inland Bardez", "anchor": "Mapusa" },
+    { "slug": "bicholim", "name": "Bicholim", "anchor": "Bicholim" },
+    { "slug": "sattari", "name": "Sattari and Valpoi", "anchor": "Valpoi" },
+    { "slug": "panaji-old-goa", "name": "Panaji and Old Goa", "anchor": "Panaji" },
+    { "slug": "mormugao", "name": "Vasco and Mormugao", "anchor": "Vasco" },
+    { "slug": "ponda", "name": "Ponda", "anchor": "Ponda" },
+    { "slug": "mollem", "name": "Mollem and Dudhsagar", "anchor": "Mollem" },
+    { "slug": "salcete-coast", "name": "South Goa coast (Margao, Colva, Benaulim)", "anchor": "Colva" },
+    { "slug": "quepem-sanguem", "name": "Quepem and Sanguem", "anchor": "Sanguem" },
+    { "slug": "canacona", "name": "Canacona (Agonda, Palolem)", "anchor": "Canacona" }
+  ]
+}

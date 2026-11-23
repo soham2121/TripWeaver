@@ -1,0 +1,82 @@
+{
+  "note": "Curated fields with field-level sources. Only facts the cited source states are recorded. Sources checked on verifiedAt. Fields not listed stay unknown.",
+  "verifiedAt": "2026-11-23T00:00:00Z",
+  "records": [
+    {
+      "osmRef": "relation/3569663",
+      "name": "Basilica of Bom Jesus",
+      "openingHours": {
+        "raw": "Mo-Sa 09:00-18:30; Su 10:30-18:30",
+        "confidence": "VERIFIED",
+        "sourceUrl": "https://www.goa.gov.in/places/basilica-church-for-churches/",
+        "note": "Goa Government listing: Sunday 10.30-18.30, weekdays 9.00-18.30. May close to tourists during religious observances (e.g. Holy Week)."
+      }
+    },
+    {
+      "osmRef": "node/4532503789",
+      "name": "Archaeological Museum, Old Goa",
+      "openingHours": {
+        "raw": "Mo-Th,Sa,Su 09:00-17:00; Fr off",
+        "confidence": "VERIFIED",
+        "sourceUrl": "https://www.incredibleindia.gov.in/en/goa/goa/the-archaeological-museum-old-goa",
+        "note": "Incredible India (Ministry of Tourism): 9 AM-5 PM, closed Fridays. Third-party listings disagree on hours."
+      },
+      "costs": [
+        {
+          "kind": "ENTRY",
+          "min": 10,
+          "max": 10,
+          "currency": "INR",
+          "basis": "PER_PERSON",
+          "confidence": "VERIFIED",
+          "sourceUrl": "https://www.incredibleindia.gov.in/en/goa/goa/the-archaeological-museum-old-goa",
+          "note": "Adult fee; children up to 15 free. Foreign-national fee not confirmed by an official source."
+        }
+      ]
+    },
+    {
+      "osmRef": "node/1241285499",
+      "name": "Dudhsagar Falls",
+      "seasonal": {
+        "text": "The Goa government closes the Dudhsagar vehicle (jeep) circuit each monsoon from early June (notices dated 11 June 2023 and 1 June 2024). Reopening after the monsoon is reported from October.",
+        "closedMonths": [6, 7, 8, 9],
+        "confidence": "CURATED_ESTIMATE",
+        "sourceUrl": "https://www.goa.gov.in/wp-content/uploads/2024/08/CLOSURE-OF-DUDHSAGAR-WATERFALLS.pdf",
+        "note": "Closure start is official; the June-September month range is a TripWeaver reading of the notices and reopening reports."
+      },
+      "costs": [
+        {
+          "kind": "ACTIVITY",
+          "min": 500,
+          "max": 500,
+          "currency": "INR",
+          "basis": "PER_PERSON",
+          "confidence": "CURATED_ESTIMATE",
+          "sourceUrl": "https://www.freepressjournal.in/lifestyle/goas-dudhsagar-waterfall-jeep-safaris-back-in-action-after-monsoon-hiatus",
+          "note": "Jeep safari seat price from a press report, not an official fee notice. Confirm with GTDC."
+        }
+      ]
+    },
+    {
+      "name": "Goa State Museum",
+      "openingHours": {
+        "raw": "Mo-Fr 09:45-13:15,14:00-17:30",
+        "confidence": "VERIFIED",
+        "sourceUrl": "https://museum.goa.gov.in/",
+        "note": "Official museum site."
+      },
+      "costs": [
+        {
+          "kind": "ENTRY",
+          "min": 0,
+          "max": 0,
+          "currency": "INR",
+          "basis": "PER_PERSON",
+          "confidence": "VERIFIED",
+          "sourceUrl": "https://museum.goa.gov.in/",
+          "note": "Official site states free entry."
+        }
+      ]
+    }
+  ]
+}

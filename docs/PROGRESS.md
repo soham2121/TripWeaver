@@ -7,7 +7,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 0 — Inspection, scope lock, decisions | Passed |
 | 1 — Skeleton and tooling | Passed |
 | 2 — Core algorithms | Passed |
-| 3 — Place catalogue and data | Not started |
+| 3 — Place catalogue and data | Passed |
 | 4 — Discovery and search | Not started |
 | 5 — Recommendation and selection | Not started |
 | 6 — Time, budget, pace, scheduling | Not started |
@@ -62,3 +62,34 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
   - Trie 12, Quickselect 15, Set Cover 15 (including lazy = full on 400 random instances, H(d) bound vs exact on 300), Heap 10, TSP 12 (2-approximation vs Held–Karp on 150 instances), isolation 1, health API 3.
 - **Docs:** `docs/ALGORITHM_DESIGN.md` (pseudocode, proofs, complexity, tie rules), `docs/CORRECTNESS.md` (invariants and test map).
 - **Gate:** all tests pass; edge cases defined; Quickselect matches sorting; Set Cover output valid; heap invariant holds after every operation; lazy greedy matches reference; TSP assumptions validated and approximation checks pass.
+
+## Phase 3 report — Place catalogue and real data (passed)
+
+**Checklist**
+- [x] Place, Destination and Region models: Flyway `V2__place_catalogue.sql`, with field-level source, cost, hours and import-batch tables.
+- [x] Downloaded Geofabrik `western-zone-261122.osm.pbf`; MD5 verified.
+- [x] OSM import: `OsmPbfExtractor` → `OsmExtract`; `OsmExtractTool` CLI.
+- [x] Categories and tags normalised (`OsmCategoryMapper`, 14-interest taxonomy).
+- [x] Points of interest imported: 5,192 accepted.
+- [~] Map geometry and routing data: Goa boundary polygon imported; PBF downloaded for OSRM. OSRM preprocessing happens in Phase 7.
+- [x] Destination and neighbourhood mapping: 12 regions; neighbourhood = nearest settlement within 3 km.
+- [x] Deduplication: stable OSM ids; same-name, same-category features within 300 m merged (67 merged).
+- [x] Curated Goa data from official sources (4 records; 1 unresolved and reported).
+- [x] Field-level source and verification timestamps (`place_source_records`).
+- [x] Duration and cost confidence fields.
+- [x] Coordinates validated against the Goa boundary polygon (70 rejected).
+- [x] Accepted/rejected/merged/unresolved report (`data/processed/goa-import-report.json`, `place_import_batches`).
+- [x] Licensed sample fixture: `data/sample/goa-osm-extract.json` (ODbL notice).
+- [x] OSM attribution and licensing documented (`docs/DATA_SOURCES.md`, README).
+- [x] Coverage report written (`docs/DATA_SOURCES.md` §5).
+
+**Commands and results**
+- `mvn verify`: 94 tests, 0 failures, 0 errors. New tests: `OsmCategoryMapperTest` 9, `GeoTest` 5, `CatalogueBuilderTest` 11, `GoaCatalogueImportTest` 1 (real extract imported twice; report and ids identical).
+- `OsmExtractTool` on the real PBF: 5,329 features, 1,227 settlements, 11 boundary rings, 11.4 s.
+- App started against Docker PostgreSQL: Flyway V2 applied; auto-import gave 5,192 places, 3,683 of them activities, in 12 regions.
+
+**Bug found and fixed (test first):** `isSettlement` threw a NullPointerException on named nodes without a `place` tag.
+
+**Known gaps:** see `docs/DATA_SOURCES.md` §5. Cost is known for only 6 activities. Opening hours exist for 313 places. Costs stay unknown and are never treated as zero.
+
+**Gate:** catalogue loads reproducibly (verified twice in a test and once on Postgres); every place has OSM provenance; missing data is flagged per place; no review data stored.
