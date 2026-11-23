@@ -127,3 +127,22 @@ Lazy greedy equals full greedy: see the Set Cover tests above.
 ## Isolation — `AlgorithmIsolationTest`
 
 This test fails if any algorithm source imports Spring, Jakarta/JPA or the HTTP client, or uses `PriorityQueue`.
+
+## Product-level tests (Phases 3–10)
+
+These tests check how the algorithms are used in the product, beyond the per-algorithm tests above. Counts come from the last full run: 206 backend tests, 0 failures.
+
+| Test class | Tests | What it shows |
+|---|---|---|
+| `place.ingest.CatalogueBuilderTest`, `OsmCategoryMapperTest`, `GeoTest`, `CorridorBoundaryTest` | 11, 9, 5, 1 | OSM mapping, merging and boundary rules for the catalogues |
+| `data.GoaCatalogueImportTest`, `KonkanCatalogueImportTest` | 1, 1 | Real extracts import with the expected counts and rejections |
+| `search.PlaceSearchIndexTest`, `api.PlaceApiTest` | 6, 8 | Trie-backed search and autocomplete through the API |
+| `recommendation.RecommendationEngineTest`, `api.RecommendationApiTest` | 15, 6 | Quickselect → Set Cover pipeline: quotas, coverage, seeds, errors |
+| `planning.ItineraryPlannerTest`, `OpeningHoursTest`, `api.ItineraryApiTest` | 22, 8, 5 | Day windows, opening hours, meals, budget (hard and flexible), pace, must-visit, avoid, keep, remove without refill, repair, Double-Tree ordering, routing outage |
+| `routing.RoutingServiceTest`, `NavigationLinksTest`, `TransportModeTest` | 6, 3, 2 | OSRM client, NoRoute, fallback estimate, Google Maps waypoint limits |
+| `roadtrip.RoadTripPlannerTest`, `api.RoadTripApiTest` | 14, 2 | Fixed waypoint order, bounded optional detours, driving and rest limits, overnight stays, infeasible arrival, cost labels |
+| `api.AuthApiTest` | 4 | Register, login and logout; BCrypt; the same error for an unknown user and a wrong password; validation; 401 without a session |
+| `api.TripCollaborationApiTest` | 9 | Owner, editor, viewer and outsider permissions; share link read-only, unguessable, revocable and expiring; 409 on stale edits; one vote per person; history order; expense split; generate with a version check; rate limit |
+| `api.HealthApiTest` | 3 | Health endpoint and error format |
+
+Frontend (`npm test`, 34 tests) covers the wizard, the timeline, budget labels, the workload bars and every edit action. It also covers the road-trip page, the home modes, sign-in, saving a trip, the trip page by role (owner, editor, viewer), version conflicts, votes and expenses, and the public shared page.

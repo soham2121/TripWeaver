@@ -41,7 +41,7 @@ delete(term, ref): walk; remove entry; prune now-empty nodes bottom-up
 
 **Baseline.** `LinearScanIndex`: scan all N entries, `startsWith`, stable sort. O(N·m + h log h) per query.
 
-**Limitations.** No fuzzy/typo matching. Mid-word matches (e.g. "aguada" for "Fort Aguada") need extra index terms (the place service will index word suffixes in Phase 4).
+**Limitations.** No fuzzy/typo matching. Mid-word matches (e.g. "aguada" for "Fort Aguada") need extra index terms. The place search index (Phase 4) also inserts every word-boundary suffix of each name, so "aguada" finds "Fort Aguada".
 
 ---
 
@@ -268,3 +268,26 @@ Tests cover: each stop visited once, the closed tour returning to base, MST ≤ 
 - Roadside rest and lunch locations are approximate.
 - Traffic is not modelled.
 - Overnight suggestions depend on OSM listing coverage, which is sparse mid-route on NH66.
+
+---
+
+## Product integration: editing and collaboration (Phases 9–10)
+
+There is no new assessed algorithm here. These are the rules that keep the algorithm results consistent when people edit them.
+
+- **Edits re-run the planner** (D32). An edit is turned into planner constraints, and the planner runs again; the plan is never patched on the client. This keeps times, opening hours, budget and Double-Tree ordering valid after every change:
+  - Remove: `avoid` plus `keepStops` for every other stop, with no refill.
+  - Replace: the same as remove, but with refill.
+  - Move: `keepStops` with the new day.
+  - Add: `mustVisit`.
+  - Replan: only locked stops are kept.
+- **Optimistic locking** (D35). Every saved trip has a version. An edit is a single compare-and-set:
+
+  ```
+  UPDATE trips SET ..., version = version + 1 WHERE id = ? AND version = ?
+  if 0 rows updated: 409 VERSION_CONFLICT (currentVersion)
+  ```
+
+  Of two edits based on the same version, exactly one succeeds. The other is told the current version and nothing is overwritten. `TripCollaborationApiTest.staleEditsReturnAConflict` checks this, and so did the live run on PostgreSQL.
+- **Duplicate-vote rule.** The primary key `(suggestion_id, user_id)` allows one vote per person per suggestion. The same vote again returns 409; the opposite value updates it.
+- **Expense split.** share = total / participants; balance = paid − share. The balances always sum to 0, apart from rounding to the paisa.

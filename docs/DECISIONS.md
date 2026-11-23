@@ -19,7 +19,10 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 - **Why:** Plan requires tests to run from a clean checkout. Flyway migrations stay in portable SQL.
 - **Cost if wrong:** A Postgres-only SQL bug could pass tests. Mitigation: app startup against real Postgres is part of each phase gate check.
 
-## D5 — Persistence: Spring Data JPA + Flyway migrations
+## D5 — Persistence: Spring JDBC (JdbcTemplate) + Flyway migrations
+- **Decision:** Plain SQL through `JdbcTemplate`. Schema changes go in versioned Flyway scripts `V1`–`V4`. No JPA entities.
+- **Why:** The catalogue import is a bulk write and the queries are explicit joins. Optimistic locking is a single compare-and-set `UPDATE` (D35). Trips store planner input and output as JSON text. JPA would add mapping without removing any SQL. JPA was in the Phase 1 skeleton and was replaced by `spring-boot-starter-jdbc` in Phase 4.
+- **Cost if wrong:** SQL strings are checked only by tests, on H2 (PostgreSQL mode) and by starting against real PostgreSQL at each phase gate.
 
 ## D6 — Authentication: username + password
 - **Decision:** Spring Security, BCrypt hashes, session cookie. Seeded demo users. No email, no OAuth.
@@ -81,11 +84,13 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 - **Decision:** Phase 6 adds `POST /api/v1/itineraries/generate`. It persists only the `algorithm_runs` row. Re-planning is the same call carrying the user's edits: `keepStops`, `fixedStops`, `mustVisit` and `avoid`. The V4 trip tables (planned in the Phase 5 notes) move to Phase 9/10, where trips get owners, roles and optimistic locking.
 - **Why:** Trips need an owner (Phase 10 auth) and a version column. A table added now would be rebuilt then. The planner itself is pure, so persistence can wrap it later without changes.
 - **Cost if wrong:** A refresh loses an unsaved plan until Phase 9.
+- **Update (Phase 10):** Saved trips arrived as `V4__trips_and_collaboration.sql`. `POST /trips/{id}/generate` wraps the same stateless planner and stores both its request and its result (D35).
 
 ## D21 — Straight-line travel estimate until routing (Phase 7)
 - **Decision:** Leg time = haversine × 1.3 road factor at an assumed speed per mode, plus a per-leg overhead. Car and taxi: 28 km/h + 5 min. Scooter: 25 km/h + 3 min. Walking: 4.5 km/h. Every response labels this in `travelBasis` as an estimate.
 - **Why:** Phase 6 needs travel minutes to check day windows. Road routing (Q2) belongs to Phase 7.
 - **Cost if wrong:** Hilly or congested legs are underestimated. The pace utilisation caps leave slack.
+- **Update:** Phase 7 made OSRM the primary source, with this estimate as the labelled fallback. Phase 8 replaced the single speed with two speeds (D31).
 
 ## D22 — Pace parameters
 - **Decision:**
@@ -177,6 +182,7 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
   - Tolls, accommodation and food are USER_ENTERED, or UNKNOWN when not entered.
   - Taxi fares are UNKNOWN.
 - **Stateless:** `POST /api/v1/road-trips/plan` only. The plan's `/detours` and `/segments` endpoints need saved trips and wait for Phase 9/10.
+- **Update (Phase 10):** A road trip can be saved as a trip of kind `ROAD_TRIP`. Detours and segments are part of the saved result, and `POST /trips/{id}/generate` plans it again, so the separate `/detours` and `/segments` endpoints were not built.
 
 ## D31 — Two-speed travel estimate
 - **Decision:** the straight-line fallback drives the first 10 road-km of each leg at local speed (car 28, scooter 25 km/h) and the rest at highway speed (car and taxi 60, scooter 45 km/h).
@@ -197,7 +203,7 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 
 - **Wizard:** generating a new plan from the wizard clears all edits.
 - **New field:** `fillFreeTime` (default true) was added so that "remove" does not bring in a replacement.
-- **Cost if wrong:** each edit is a full planning run, about 50 ms with OSRM on the Goa catalogue. Saved trips (Phase 10) will persist the edits.
+- **Cost if wrong:** each edit is a full planning run, about 50 ms with OSRM on the Goa catalogue. On a saved trip (Phase 10), the edited request is sent to `POST /trips/{id}/generate` together with the trip version, and the result is stored. The edit logic lives in `frontend/src/features/plan/edits.ts` and is shared by the plan page and the trip page.
 
 ## D33 — Frontend structure for Phase 9
 - **Home:** three modes (`/plan?mode=today`, `/plan?mode=trip`, `/road-trip`) and four demo scenarios. The demos use the bundled catalogue and need no keys.

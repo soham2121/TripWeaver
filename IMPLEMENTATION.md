@@ -1401,40 +1401,40 @@ Goal: clean final submission package.
 # 17. Definition of done
 
 ## Product
-- [ ] Plan-today mode works.
-- [ ] Multi-day destination mode works.
-- [ ] Road-trip mode works.
-- [ ] Budget and time constraints work.
-- [ ] Trip and day pace work.
-- [ ] Accommodation/base constraints work.
-- [ ] User can edit and replan.
-- [ ] Shared read-only link works.
-- [ ] Map and navigation handoff work.
+- [x] Plan-today mode works.
+- [x] Multi-day destination mode works.
+- [x] Road-trip mode works.
+- [x] Budget and time constraints work.
+- [x] Trip and day pace work.
+- [x] Accommodation/base constraints work.
+- [x] User can edit and replan.
+- [x] Shared read-only link works.
+- [x] Map and navigation handoff work.
 
 ## Algorithms
-- [ ] Trie implemented in Java.
-- [ ] Randomized Quickselect implemented in Java and CO5 demonstrated.
-- [ ] Greedy Weighted Set Cover implemented in Java.
-- [ ] Binary Max Heap/Indexed Heap implemented in Java and integrated.
-- [ ] Metric TSP Double-Tree implemented in Java with assumptions validated.
-- [ ] No assessed algorithm is delegated to a library/service.
-- [ ] Pseudocode, correctness notes and complexity exist for every core algorithm.
+- [x] Trie implemented in Java.
+- [x] Randomized Quickselect implemented in Java and CO5 demonstrated.
+- [x] Greedy Weighted Set Cover implemented in Java.
+- [x] Binary Max Heap/Indexed Heap implemented in Java and integrated.
+- [x] Metric TSP Double-Tree implemented in Java with assumptions validated.
+- [x] No assessed algorithm is delegated to a library/service.
+- [x] Pseudocode, correctness notes and complexity exist for every core algorithm.
 
 ## Data and providers
-- [ ] Real Goa place catalogue imported.
-- [ ] OSM attribution/licensing documented.
-- [ ] Curated fields have provenance.
-- [ ] Costs have basis/confidence.
+- [x] Real Goa place catalogue imported.
+- [x] OSM attribution/licensing documented.
+- [x] Curated fields have provenance.
+- [x] Costs have basis/confidence.
 - [ ] Google Places is optional and policy-compliant if enabled.
-- [ ] Provider outages do not break core planning.
-- [ ] Raw data is not committed without permission.
+- [x] Provider outages do not break core planning.
+- [x] Raw data is not committed without permission.
 
 ## CIA evidence
-- [ ] At least five correctness tests per core algorithm; target 8–12.
+- [x] At least five correctness tests per core algorithm; target 8–12.
 - [ ] At least three increasing benchmark sizes per core algorithm.
 - [ ] Baseline comparison per core algorithm.
 - [ ] Actual benchmark outputs saved.
-- [ ] Edge/failure cases demonstrated.
+- [x] Edge/failure cases demonstrated.
 - [ ] README and reproducible setup complete.
 - [ ] Proposal and technical report complete.
 - [ ] Eight-minute demo rehearsed.

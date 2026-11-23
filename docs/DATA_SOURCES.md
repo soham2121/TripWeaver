@@ -99,7 +99,8 @@ Used for Mumbai–Goa road trips. Built from the same Geofabrik extract with:
 
 ```bash
 cd backend
-./mvnw -q compile exec:java -Dexec.mainClass=com.tripweaver.place.ingest.OsmExtractTool \n  -Dexec.args="../data/raw/western-zone-261122.osm.pbf ../data/sample/konkan-osm-extract.json 15.60,72.75,19.10,74.10 -Goa 4"
+./mvnw -q compile exec:java -Dexec.mainClass=com.tripweaver.place.ingest.OsmExtractTool \
+  -Dexec.args="../data/raw/western-zone-261122.osm.pbf ../data/sample/konkan-osm-extract.json 15.60,72.75,19.10,74.10 -Goa 4"
 ```
 
 - **Area:** bbox lat 15.60–19.10, lon 72.75–74.10, minus the Goa boundary.
@@ -111,12 +112,17 @@ cd backend
 
 - **Engine:** self-hosted OSRM `ghcr.io/project-osrm/osrm-backend:v6.0.0`, car profile, Contraction Hierarchies. Built by `scripts/osrm-prepare.sh` from the same Geofabrik western-zone extract (2026-11-22). The output in `data/osrm/` is git-ignored.
 - **Use:** travel-time tables and route geometry. Responses are labelled `OSRM`.
-- **Fallback:** when OSRM is not running, the route is labelled `ESTIMATE`: straight-line distance × 1.3 at an assumed speed.
+- **Fallback:** when OSRM is not running or finds no road, the route is labelled `ESTIMATE`: straight-line distance × 1.3, with the first 10 km of each leg at local speed and the rest at highway speed (D31).
 - **Walking:** no foot profile is built, so walking always uses the estimate.
 - **Navigation:** Google Maps directions URLs (`api=1`) built from coordinates. No Google API, no key, nothing stored.
 
-## 7. Not used yet
+## 7. Map tiles
+
+- **Source:** OpenFreeMap vector tiles, style `liberty`, drawn with MapLibre GL. No API key.
+- **Attribution:** MapLibre renders it from the style, and the page footer names OpenStreetMap and OpenFreeMap.
+- **If tiles fail:** the map area says so, and the list and timeline still work.
+
+## 8. Not used yet
 
 - **Google Places:** optional, Phase 11. Provider-off by default. Nothing stored.
-- **Weather:** later phases.
-- **Map tiles:** Phase 4.
+- **Weather:** not part of the current plan.
