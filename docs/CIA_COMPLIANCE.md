@@ -5,7 +5,7 @@ Maps each CIA requirement to evidence in the repository. A row is marked done on
 | Requirement | Evidence | Status |
 |---|---|---|
 | Group of 2–3 | `docs/CONTRIBUTIONS.md` | Pending (team names, Q1) |
-| Java backend, JS-family frontend | `backend/` (Spring Boot, Java 25), `frontend/` (React + TypeScript) | Pending (Phase 1) |
+| Java backend, JS-family frontend | `backend/` (Spring Boot, Java 25), `frontend/` (React + TypeScript) | Done (Phase 1) |
 | ≥2 syllabus techniques, ≥1 from Units 4–6 | Trie (U4), Set Cover (U5), Metric TSP (U5), Heap (U2), Quickselect (U1/6) | Implemented and tested (Phase 2) |
 | CO5 randomized algorithm | Randomized Quickselect, seeded, `algorithms/selection` | Implemented and tested; product integration in Phase 5 |
 | Original Java implementations | `backend/src/main/java/com/tripweaver/algorithms/**` | Done; `AlgorithmIsolationTest` |
@@ -13,7 +13,7 @@ Maps each CIA requirement to evidence in the repository. A row is marked done on
 | ≥5 correctness tests per core algorithm incl. edge case | `docs/CORRECTNESS.md`: Trie 12, Quickselect 15, Set Cover 15, Heap 10, TSP 12 | Done |
 | Benchmarks at ≥3 increasing sizes | `docs/BENCHMARKS.md`, raw CSV | Pending (Phase 12) |
 | Baseline comparison | `docs/BENCHMARKS.md` | Pending (Phase 12) |
-| Reproducible setup | `README.md` | Pending (Phase 1) |
+| Reproducible setup | `README.md`, clean-clone build verified in Phase 1 | Done for skeleton; re-verify at Phase 13 |
 
 ## Algorithm contracts
 
