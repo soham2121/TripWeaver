@@ -6,7 +6,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 |---|---|
 | 0 — Inspection, scope lock, decisions | Passed |
 | 1 — Skeleton and tooling | Passed |
-| 2 — Core algorithms | Not started |
+| 2 — Core algorithms | Passed |
 | 3 — Place catalogue and data | Not started |
 | 4 — Discovery and search | Not started |
 | 5 — Recommendation and selection | Not started |
@@ -48,3 +48,17 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
   - Backend jar against Docker PostgreSQL: Flyway applied V1; `curl localhost:5173/api/v1/health` (through Vite proxy) returned `{"status":"UP",...}`.
 - **CI:** workflow written; not executed (no remote).
 - **Security note:** `SecurityConfig` permits all requests until Phase 10 adds login and trip permissions. No protected data exists yet.
+
+## Phase 2 report — Core algorithms (passed)
+
+- **Implemented (plain Java, `backend/src/main/java/com/tripweaver/algorithms/`):**
+  - `trie/` — `Trie`, `LinearScanIndex` (baseline)
+  - `selection/` — `RandomizedQuickselect`, `CategoryAwareSelector`
+  - `heap/` — `IndexedMaxHeap`
+  - `setcover/` — `GreedyWeightedSetCover`, `LazyGreedySetCover`, `ExactSetCover` (reference)
+  - `tsp/` — `MetricValidator`, `DoubleTreeTsp`, `ExactTsp` (Held–Karp), `NearestNeighbourTsp`
+- **Process:** test classes written first; first run failed to compile because the classes did not exist (RED). Then each algorithm was implemented and its tests run to GREEN.
+- **Command run:** `mvn verify`, result 68 tests, 0 failures, 0 errors; Spotless check passed.
+  - Trie 12, Quickselect 15, Set Cover 15 (including lazy = full on 400 random instances, H(d) bound vs exact on 300), Heap 10, TSP 12 (2-approximation vs Held–Karp on 150 instances), isolation 1, health API 3.
+- **Docs:** `docs/ALGORITHM_DESIGN.md` (pseudocode, proofs, complexity, tie rules), `docs/CORRECTNESS.md` (invariants and test map).
+- **Gate:** all tests pass; edge cases defined; Quickselect matches sorting; Set Cover output valid; heap invariant holds after every operation; lazy greedy matches reference; TSP assumptions validated and approximation checks pass.
