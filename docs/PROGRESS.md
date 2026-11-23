@@ -9,7 +9,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 2 — Core algorithms | Passed |
 | 3 — Place catalogue and data | Passed |
 | 4 — Discovery and search | Passed |
-| 5 — Recommendation and selection | Not started |
+| 5 — Recommendation and selection | Passed |
 | 6 — Time, budget, pace, scheduling | Not started |
 | 7 — Route ordering and navigation | Not started |
 | 8 — Road-trip planner | Not started |
@@ -121,3 +121,32 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - Facet suggestions now come before places in autocomplete (API test caught an exact-name place ranked above its neighbourhood).
 
 **Gate:** discovery by prefix, category and area works; the Trie runs in Java on the backend; no Google credentials are used anywhere.
+
+## Phase 5 report — Recommendation and experience selection (passed)
+
+**Checklist**
+- [x] Interest taxonomy (14 tags, `OsmCategoryMapper.INTERESTS`).
+- [x] User interest weights in (0, 5].
+- [x] Transparent relevance score with per-component breakdown (`ScoreBreakdown`).
+- [x] Hard filters separated from soft scores (avoid, regions, seasonal closure, wheelchair; must-visit conflicts → 422).
+- [x] Category-aware Quickselect (per-interest quotas).
+- [x] Weighted Set Cover with the binary-heap lazy greedy (full greedy run alongside as a check).
+- [x] Rare interests preserved (tested: water_sports next to food).
+- [x] Selection explanations (reason, newly covered, gain/cost).
+- [x] Covered and uncovered interests returned with warnings.
+- [x] Ties (total order on id) and infeasibility (422 with relaxations).
+- [x] Tested against the real Goa catalogue (`RecommendationApiTest`).
+- [x] Ranking-only baseline compared in every response.
+- [x] Small Set Cover instances compared with the exact solution (Phase 2 tests, 300 instances).
+- [x] Algorithm metadata and seed persisted (`algorithm_runs`, Flyway V3; `GET /algorithms/metadata`).
+
+**Commands and results**
+- `mvn verify`: 128 tests, 0 failures. New tests: `RecommendationEngineTest` 14, `RecommendationApiTest` 6.
+- `npm test`: 8 passed. Build and format check clean (types updated for the new summary fields).
+- Live Postgres check: Flyway V3 applied. Demo request result is in `docs/ALGORITHM_DESIGN.md` (all 4 interests covered; baseline left 3 uncovered; heap 118 vs full 234 gain evaluations).
+
+**Bug found and fixed:** a request body without `requireWheelchair` failed with 400 because Jackson 3 rejects null for a primitive `boolean`. The field is now a `Boolean`, normalised to false. Bad-request causes are now logged at DEBUG.
+
+**Gate:** preferences change results (tested); selection is diverse (Set Cover covers every coverable interest); exclusions are respected; uncovered interests are visible; results are reproducible from the seed (same seed gives an equal result; any seed gives the same picks).
+
+**Next phase prerequisites (Phase 6):** the trip model (V4 tables `trips`, `trip_days`, `itinerary_stops`), budget model, workload-based pace, and a day-allocation heuristic consuming `selected` + `fill`.

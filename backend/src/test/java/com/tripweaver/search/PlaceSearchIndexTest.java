@@ -30,7 +30,9 @@ class PlaceSearchIndexTest {
                 List.of(),
                 false,
                 "PARTIAL",
-                List.of("cost"));
+                List.of("cost"),
+                Set.of(),
+                List.of());
     }
 
     static final List<PlaceSummary> PLACES = List.of(

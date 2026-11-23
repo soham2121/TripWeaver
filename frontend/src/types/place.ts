@@ -29,6 +29,8 @@ export interface PlaceSummary {
   hasOpeningHours: boolean
   dataQuality: string
   missingFields: string[]
+  accessibility: string[]
+  seasonalClosedMonths: number[]
 }
 
 export interface Provenance {

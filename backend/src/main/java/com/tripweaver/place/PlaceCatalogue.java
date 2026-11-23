@@ -49,6 +49,7 @@ public class PlaceCatalogue {
     public synchronized Map<String, PlaceSearchIndex> reload() {
         Map<UUID, Set<String>> cats = multimap("SELECT place_id, category FROM place_categories");
         Map<UUID, Set<String>> interests = multimap("SELECT place_id, tag FROM place_interest_tags");
+        Map<UUID, Set<String>> access = multimap("SELECT place_id, tag FROM place_accessibility_tags");
         Map<UUID, List<PlaceSummary.CostEstimate>> costs = new HashMap<>();
         jdbc.query(
                 "SELECT place_id, kind, amount_min, amount_max, currency, basis, confidence FROM place_cost_estimates",
@@ -69,7 +70,7 @@ public class PlaceCatalogue {
         jdbc.query("""
                 SELECT p.id, p.name, p.latitude, p.longitude, p.primary_category, r.slug, r.name, p.neighbourhood,
                        p.is_activity, p.visit_minutes_min, p.visit_minutes_max, p.activity_intensity,
-                       p.data_quality_status, p.missing_fields, d.slug
+                       p.data_quality_status, p.missing_fields, d.slug, p.seasonal_closed_months
                 FROM places p
                 JOIN destinations d ON d.id = p.destination_id
                 LEFT JOIN regions r ON r.id = p.region_id
@@ -96,7 +97,9 @@ public class PlaceCatalogue {
                             List.copyOf(costs.getOrDefault(id, List.of())),
                             withHours.contains(id),
                             rs.getString(13),
-                            missing == null || missing.isBlank() ? List.of() : Arrays.asList(missing.split(","))));
+                            missing == null || missing.isBlank() ? List.of() : Arrays.asList(missing.split(",")),
+                            Set.copyOf(access.getOrDefault(id, Set.of())),
+                            months(rs.getString(16))));
         });
         Map<String, PlaceSearchIndex> m = new HashMap<>();
         byDest.forEach((slug, ps) -> m.put(slug, PlaceSearchIndex.build(ps)));
@@ -105,6 +108,12 @@ public class PlaceCatalogue {
             m.putIfAbsent(slug, PlaceSearchIndex.build(List.of()));
         indexes = Map.copyOf(m);
         return indexes;
+    }
+
+    private static List<Integer> months(String csv) {
+        return csv == null || csv.isBlank()
+                ? List.of()
+                : Arrays.stream(csv.split(",")).map(Integer::valueOf).toList();
     }
 
     private Map<UUID, Set<String>> multimap(String sql) {

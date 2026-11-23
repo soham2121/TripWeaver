@@ -67,3 +67,12 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 ## D17 — In-memory search index
 - **Decision:** `PlaceCatalogue` holds an immutable `PlaceSearchIndex` (Java Trie plus a sorted list) per destination. It is rebuilt after each catalogue import. Nearby search is a linear haversine scan.
 - **Why:** About 5K places fit easily in memory. The Trie is the assessed component. A spatial index would not pay off at this size.
+
+## D18 — Recommendation scoring and selection cost
+- **Decision:** Fixed, documented weights: score = 0.45 interest, 0.20 distance, 0.10 budget, 0.10 duration, 0.15 confidence. Set Cover cost = (0.2 + 0.4·duration + 0.2·spend + 0.2·detour)/(0.5 + relevance). Unknown spend uses a neutral 0.5 in ranking only, never in budget totals. Default seed 42; default K 60.
+- **Why:** The values are simple, explainable in a viva, and every component is visible in the response.
+- **Cost if wrong:** Ranking quality depends on the weights. They are constants in `ScoreBreakdown` and easy to tune.
+
+## D19 — Set Cover picks one place per interest; scheduler fills the rest
+- **Decision:** Set Cover guarantees diversity (each requested interest covered once, weighted). Extra activities for multi-day trips come from the ranked pool ("fill") during day allocation (Phase 6).
+- **Why:** This keeps the classical set-cover objective intact instead of inventing a multicover variant.

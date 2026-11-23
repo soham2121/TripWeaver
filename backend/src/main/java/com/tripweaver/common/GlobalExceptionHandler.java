@@ -42,6 +42,7 @@ public class GlobalExceptionHandler {
         IllegalArgumentException.class
     })
     ResponseEntity<ApiError> badRequest(Exception e) {
+        log.debug("Bad request: {}", e.getMessage());
         String msg = e instanceof IllegalArgumentException ? e.getMessage() : "Malformed request";
         return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", msg, Map.of()));
     }

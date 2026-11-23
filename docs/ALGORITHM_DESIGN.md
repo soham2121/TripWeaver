@@ -162,3 +162,33 @@ guarantee ← triangle inequality holds
 | Set Cover / lazy greedy | Ratio desc, then candidate id asc; tags summed in sorted order (identical floating-point sums in both solvers) |
 | Heap | Priority desc, then id asc |
 | Double-Tree | Prim picks lowest index on ties; children visited in index order |
+
+---
+
+## Product integration: recommendation pipeline (Phase 5)
+
+`recommendation/RecommendationEngine` (pure) runs these steps:
+
+1. **Hard filters**, which are never traded off against score: avoid list, region restriction, curated seasonal closure in the travel month, and `wheelchair=no` when wheelchair access is required. Must-visit conflicts (also avoided, closed that month, inaccessible) return `422 INFEASIBLE_PLAN` with conflicts and suggested relaxations.
+2. **Relevance score** (`ScoreBreakdown`), in [0, 1]:
+   - total = 0.45·interest + 0.20·distance + 0.10·budget + 0.10·duration + 0.15·data-confidence.
+   - Unknown cost scores a neutral 0.5 and is noted. It is never treated as zero.
+   - Places matching no requested interest drop out.
+3. **Category-aware Randomized Quickselect.** K = poolSize (default 60). Each requested interest reserves min(3, ⌊K/|U|⌋) slots.
+4. **Lazy-greedy Weighted Set Cover** on the pool plus must-visits:
+   - Universe = requested interests weighted 1–5.
+   - Selection cost = (0.2 + 0.4·duration + 0.2·spend + 0.2·detour) / (0.5 + relevance).
+   - Must-visits are preselected.
+   - Full greedy also runs; the response reports `lazyEqualsFull` and the gain-evaluation counts of both.
+5. **Outputs:**
+   - A ranking-only baseline with the same number of places, for comparison.
+   - The remaining pool ranked by score ("fill"), which the scheduler (Phase 6) uses.
+   - Warnings, including the count of selected places with unknown cost.
+
+Example on the real Goa catalogue, 2026-11-23, Postgres:
+- **Request:** beach 5, food 4, heritage 4, adventure 2; base Candolim; December; seed 2026.
+- **Quickselect:** 3,083 eligible places → K = 60, in 36 partition rounds.
+- **Set Cover:** 4 picks covering all 4 interests.
+- **Ranking-only baseline:** 4 beaches, leaving adventure, food and heritage uncovered.
+- **Heap:** 118 gain evaluations vs 234 for full recomputation; identical picks.
+- **Time:** whole pipeline 36.8 ms.

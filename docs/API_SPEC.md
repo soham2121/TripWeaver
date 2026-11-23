@@ -63,3 +63,28 @@ Returns `PlaceDetail`, which contains:
 ## Destinations
 - `GET /destinations` → `[{ slug, name, bbox[minLat,minLon,maxLat,maxLon], placeCount, activityCount, regions[] }]`
 - `GET /destinations/{slug}/coverage` → the latest import report: counts by category, region and interest, missing-field counts, rejected, merged and unresolved curated records, plus attribution.
+
+## Recommendations (Phase 5)
+
+### `POST /recommendations/preview`
+Body (`RecommendationRequest`), all fields optional except `interests`:
+
+```json
+{ "interests": {"beach": 5, "food": 4}, "baseLat": 15.52, "baseLon": 73.766, "travelMonth": 12,
+  "maxEntryCostPerPerson": 500, "dayMinutes": 600, "mustVisit": ["<uuid>"], "avoid": ["<uuid>"],
+  "requireWheelchair": false, "regions": ["north-coast"], "poolSize": 60, "maxSelections": 20, "seed": 42 }
+```
+
+Response: `{ runId, durationMicros, result }`. `result` contains:
+- `seed`
+- `pool`: `eligible`, `k`, `threshold`, `partitionRounds`, `reserved`, `shortfalls`
+- `selected[]`: `place`, `score` breakdown, `step`, `newlyCovered`, `marginalGain`, `selectionCost`, `ratio`, `mustVisit`, `reason`
+- `coverage`: `covered`, `uncovered`, `coveredWeight`, `totalWeight`, `stopReason`, `gainEvaluations`, `fullGreedyGainEvaluations`, `lazyEqualsFull`
+- `rankingOnlyBaseline`, `fill[]`, `excluded{}`, `warnings[]`
+
+Errors:
+- 400: `NO_INTERESTS`, `UNKNOWN_INTEREST`, `BAD_WEIGHT`, `UNKNOWN_PLACE`
+- 422: `INFEASIBLE_PLAN`, with `details.conflicts` and `details.suggestedRelaxations`
+
+### `GET /algorithms/metadata?limit=20`
+Returns the five algorithm descriptors plus recent `algorithm_runs` rows (algorithm, version, input size, seed, duration, summary JSON).

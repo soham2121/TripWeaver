@@ -20,6 +20,8 @@ export function summary(over: Partial<PlaceSummary> = {}): PlaceSummary {
     hasOpeningHours: false,
     dataQuality: 'PARTIAL',
     missingFields: ['cost', 'opening_hours'],
+    accessibility: [],
+    seasonalClosedMonths: [],
     ...over,
   }
 }

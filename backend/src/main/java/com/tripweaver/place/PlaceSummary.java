@@ -23,7 +23,9 @@ public record PlaceSummary(
         List<CostEstimate> costs,
         boolean hasOpeningHours,
         String dataQuality,
-        List<String> missingFields) {
+        List<String> missingFields,
+        Set<String> accessibility,
+        List<Integer> seasonalClosedMonths) {
 
     /** A sourced cost. Absence of a cost means unknown, never zero. */
     public record CostEstimate(String kind, double min, double max, String currency, String basis, String confidence) {}
