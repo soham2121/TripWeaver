@@ -12,11 +12,13 @@ import java.util.function.Predicate;
 public final class LinearScanIndex<R> {
 
     private final List<Trie.Match<R>> entries = new ArrayList<>();
+    private final java.util.Set<java.util.List<Object>> keys =
+            new java.util.HashSet<>(); // O(1) duplicate check on insert
 
     public void insert(String term, R ref) {
         String key = Trie.normalize(term);
         if (key.isEmpty()) throw new IllegalArgumentException("term is blank after normalisation");
-        for (Trie.Match<R> m : entries) if (m.key().equals(key) && m.ref().equals(ref)) return;
+        if (!keys.add(java.util.List.of(key, ref))) return;
         entries.add(new Trie.Match<>(term, key, ref));
     }
 

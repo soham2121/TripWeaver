@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -15,10 +16,12 @@ public class CatalogueImportService {
 
     private final CatalogueWriter writer;
     private final JsonMapper json;
+    private final ApplicationEventPublisher events;
 
-    public CatalogueImportService(CatalogueWriter writer, JsonMapper json) {
+    public CatalogueImportService(CatalogueWriter writer, JsonMapper json, ApplicationEventPublisher events) {
         this.writer = writer;
         this.json = json;
+        this.events = events;
     }
 
     public BuiltCatalogue.Report importFiles(Path extract, Path regions, Path curated, Path reportOut) {
@@ -27,6 +30,7 @@ public class CatalogueImportService {
         CuratedData cd = json.readValue(curated.toFile(), CuratedData.class);
         BuiltCatalogue built = CatalogueBuilder.build(ex, rc, cd);
         writer.write(built);
+        events.publishEvent(new CatalogueImportedEvent(rc.destination().slug()));
         BuiltCatalogue.Report r = built.report();
         if (reportOut != null) {
             try {

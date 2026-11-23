@@ -8,7 +8,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 1 — Skeleton and tooling | Passed |
 | 2 — Core algorithms | Passed |
 | 3 — Place catalogue and data | Passed |
-| 4 — Discovery and search | Not started |
+| 4 — Discovery and search | Passed |
 | 5 — Recommendation and selection | Not started |
 | 6 — Time, budget, pace, scheduling | Not started |
 | 7 — Route ordering and navigation | Not started |
@@ -93,3 +93,31 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 **Known gaps:** see `docs/DATA_SOURCES.md` §5. Cost is known for only 6 activities. Opening hours exist for 313 places. Costs stay unknown and are never treated as zero.
 
 **Gate:** catalogue loads reproducibly (verified twice in a test and once on Postgres); every place has OSM provenance; missing data is flagged per place; no review data stored.
+
+## Phase 4 report — Discovery and search (passed)
+
+**Checklist**
+- [x] Place search API: `GET /places/search` (q, category, interest, region, activitiesOnly, paging).
+- [x] Java Trie autocomplete: `PlaceSearchIndex` uses `algorithms.trie.Trie` (names plus word suffixes, categories, interests, cuisines, neighbourhoods, regions); `GET /places/autocomplete`.
+- [x] Category and interest filters.
+- [x] Destination, neighbourhood and region filters.
+- [x] Nearby lookup: `GET /places/nearby`.
+- [x] Place detail screen (`PlaceDetailPanel`) with costs, hours, seasonal note, sources, OSM link and attribution.
+- [x] Source and confidence labels (`ConfidenceBadge`). Unknown cost is shown as "Cost unknown", never ₹0.
+- [x] Map and list view (MapLibre + OpenFreeMap; list fallback when tiles fail).
+- [x] Autocomplete UI (combobox, keyboard navigation).
+- [x] Trie vs linear-scan benchmark at 1K/10K/100K/1M (`docs/BENCHMARKS.md`).
+- [x] API and integration tests.
+
+**Commands and results**
+- `mvn verify`: 108 tests, 0 failures. New tests: `PlaceSearchIndexTest` 6, `PlaceApiTest` 8 (real Goa catalogue, no credentials).
+- `npm test`: 8 passed. `npm run build`: success. `npm run lint`: 0 errors, 2 warnings (setState in data-fetch effects).
+- Benchmark run: `BenchmarkMain trie`. Raw CSV committed; results in `docs/BENCHMARKS.md`.
+- Live smoke test (jar on Postgres plus Vite proxy): autocomplete `calang` returned the Calangute neighbourhood first, then places. `q=fort` returned real forts. Heritage filter in `panaji-old-goa` worked. OpenFreeMap style URL returned 200.
+- Visual browser check: **not done**, because the Chrome extension was not connected. The UI is covered by component tests only.
+
+**Fixes found during the phase**
+- `LinearScanIndex.insert` was O(N) per insert, which made the 1M-term benchmark setup O(N²). Duplicate check now uses a hash set; Trie tests still pass.
+- Facet suggestions now come before places in autocomplete (API test caught an exact-name place ranked above its neighbourhood).
+
+**Gate:** discovery by prefix, category and area works; the Trie runs in Java on the backend; no Google credentials are used anywhere.

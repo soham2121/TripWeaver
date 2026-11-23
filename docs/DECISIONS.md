@@ -55,3 +55,15 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 
 ## D14 — Visit durations are category defaults
 - **Decision:** Visit duration ranges come from category defaults, labelled CURATED_ESTIMATE ("TripWeaver category default for X"). No per-place durations are invented.
+
+## D15 — JDBC instead of JPA
+- **Decision:** Persistence uses Spring JDBC (`JdbcTemplate`) with explicit SQL and Flyway. The JPA starter was removed.
+- **Why:** The catalogue import is bulk batch work. The read models are DTO-shaped. The plan allows "JPA or JDBC". Optimistic locking will use an explicit `version` column.
+
+## D16 — Map tiles: OpenFreeMap (resolves Q3)
+- **Decision:** MapLibre GL with the OpenFreeMap "liberty" style (`https://tiles.openfreemap.org/styles/liberty`). No API key. MapLibre renders the attribution from the style.
+- **Why:** OpenFreeMap is free with no key and allows this use with attribution. If tiles fail, the page falls back to the list view.
+
+## D17 — In-memory search index
+- **Decision:** `PlaceCatalogue` holds an immutable `PlaceSearchIndex` (Java Trie plus a sorted list) per destination. It is rebuilt after each catalogue import. Nearby search is a linear haversine scan.
+- **Why:** About 5K places fit easily in memory. The Trie is the assessed component. A spatial index would not pay off at this size.
