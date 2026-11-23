@@ -1257,18 +1257,18 @@ Goal: turn selections into a feasible day-wise itinerary.
 
 Goal: turn each day's locations into an efficient route.
 
-- [ ] Integrate permitted road-distance/time provider or self-host OSRM.
-- [ ] Build distance matrix for candidate stops.
-- [ ] Validate metric assumptions for Double-Tree mode.
-- [ ] Implement daily closed-tour ordering.
-- [ ] Keep actual directed road legs separate from symmetric metric objective.
-- [ ] Preserve user-fixed start/end and mandatory events.
-- [ ] Support open-route mode without false approximation claims.
-- [ ] Draw route and numbered stops.
-- [ ] Generate Google Maps URLs within waypoint limits.
-- [ ] Add no-route/provider failure handling.
-- [ ] Test route feasibility and visit uniqueness.
-- [ ] Compare with nearest-neighbour and exact small-instance optimum.
+- [x] Integrate permitted road-distance/time provider or self-host OSRM.
+- [x] Build distance matrix for candidate stops.
+- [x] Validate metric assumptions for Double-Tree mode.
+- [x] Implement daily closed-tour ordering.
+- [x] Keep actual directed road legs separate from symmetric metric objective.
+- [x] Preserve user-fixed start/end and mandatory events.
+- [x] Support open-route mode without false approximation claims.
+- [x] Draw route and numbered stops.
+- [x] Generate Google Maps URLs within waypoint limits.
+- [x] Add no-route/provider failure handling.
+- [x] Test route feasibility and visit uniqueness.
+- [x] Compare with nearest-neighbour and exact small-instance optimum.
 
 **Acceptance gate:** Every stop appears exactly once; closed tour returns to base; approximation claim only appears for valid metric inputs; real navigation legs are clearly estimated.
 

@@ -1,5 +1,6 @@
 package com.tripweaver.planning;
 
+import com.tripweaver.routing.TransportMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;

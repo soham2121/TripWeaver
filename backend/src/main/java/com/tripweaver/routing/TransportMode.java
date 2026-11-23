@@ -1,4 +1,4 @@
-package com.tripweaver.planning;
+package com.tripweaver.routing;
 
 import com.tripweaver.common.Geo;
 
@@ -27,6 +27,10 @@ public enum TransportMode {
 
     public double roadKm(double lat1, double lon1, double lat2, double lon2) {
         return Geo.haversineKm(lat1, lon1, lat2, lon2) * ROAD_FACTOR;
+    }
+
+    public int legOverheadMinutes() {
+        return legOverheadMinutes;
     }
 
     public int minutes(double roadKm) {

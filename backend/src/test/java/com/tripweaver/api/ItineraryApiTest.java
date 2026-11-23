@@ -90,12 +90,23 @@ class ItineraryApiTest {
                 prev = e;
             }
             assertFalse(LocalTime.parse(d.get("endOfDay").asString()).isAfter(end));
+            int stops = d.get("stops").size();
+            assertEquals(stops + 1, d.get("route").get("legs").size(), "closed tour back to base");
+            assertFalse(d.get("navigationUrls").isEmpty());
+            if (stops >= 2) {
+                JsonNode o = d.get("ordering");
+                assertTrue(
+                        o.get("doubleTreeCost").asDouble() >= o.get("mstCost").asDouble());
+                assertEquals(
+                        o.get("metric").asBoolean(), o.get("guaranteeApplies").asBoolean());
+            }
             assertTrue(d.get("workload").get("utilisation").asDouble() <= 0.70 + 1e-9);
         }
         JsonNode budget = it.get("budget");
         assertEquals("INR", budget.get("currency").asString());
         assertTrue(budget.get("knownMax").asDouble() >= 1200 * 2 * 3 + 4000 * 2);
         assertTrue(it.get("travelBasis").asString().contains("Estimate"));
+        assertEquals("ESTIMATE", it.get("travelProvider").asString()); // tests run without OSRM
         assertTrue(it.get("disclaimer").asString().contains("not guarantee"));
     }
 

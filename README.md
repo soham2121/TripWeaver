@@ -16,11 +16,17 @@ The full specification is in [`IMPLEMENTATION.md`](IMPLEMENTATION.md). Phase sta
 # 1. Database (PostgreSQL 17 on host port 5433)
 docker compose up -d db
 
-# 2. Backend API on http://localhost:8088
+# 2. Optional road routing (OSRM on host port 5001). One-off preprocessing, about 10 minutes:
+#    needs data/raw/western-zone-261122.osm.pbf (see docs/DATA_SOURCES.md)
+sh scripts/osrm-prepare.sh
+docker compose --profile routing up -d osrm
+#    Without OSRM the planner uses labelled straight-line travel estimates.
+
+# 3. Backend API on http://localhost:8088
 cd backend
 ./mvnw spring-boot:run        # Windows: mvnw.cmd spring-boot:run
 
-# 3. Frontend on http://localhost:5173 (proxies /api to :8088)
+# 4. Frontend on http://localhost:5173 (proxies /api to :8088)
 cd frontend
 npm install
 npm run dev

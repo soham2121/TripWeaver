@@ -93,8 +93,16 @@ Other gaps:
 
 Targets in plan §4.1.D were 80–100 restaurants, 50–70 beaches and viewpoints, 40–60 heritage and 30–50 nature places. All are met by count. Costs and hours are the real coverage gap. Hard-budget plans therefore report incomplete estimates instead of assuming zero.
 
-## 6. Not used yet
+## 6. Road routing (Phase 7)
+
+- **Engine:** self-hosted OSRM `ghcr.io/project-osrm/osrm-backend:v6.0.0`, car profile, Contraction Hierarchies. Built by `scripts/osrm-prepare.sh` from the same Geofabrik western-zone extract (2026-11-22). The output in `data/osrm/` is git-ignored.
+- **Use:** travel-time tables and route geometry. Responses are labelled `OSRM`.
+- **Fallback:** when OSRM is not running, the route is labelled `ESTIMATE`: straight-line distance × 1.3 at an assumed speed.
+- **Walking:** no foot profile is built, so walking always uses the estimate.
+- **Navigation:** Google Maps directions URLs (`api=1`) built from coordinates. No Google API, no key, nothing stored.
+
+## 7. Not used yet
 
 - **Google Places:** optional, Phase 11. Provider-off by default. Nothing stored.
-- **Routing (OSRM) and weather:** Phase 7 and later.
+- **Weather:** later phases.
 - **Map tiles:** Phase 4.

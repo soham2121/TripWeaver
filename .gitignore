@@ -27,3 +27,4 @@ Thumbs.db
 # Tooling scratch
 .superpowers/
 benchmark-results/tmp/
+data/osrm/

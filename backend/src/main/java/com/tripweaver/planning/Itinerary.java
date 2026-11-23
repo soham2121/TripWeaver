@@ -1,6 +1,7 @@
 package com.tripweaver.planning;
 
 import com.tripweaver.place.PlaceSummary;
+import com.tripweaver.routing.Route;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -16,6 +17,7 @@ public record Itinerary(
         List<Unscheduled> unscheduled,
         List<Repair> repairs,
         List<String> warnings,
+        String travelProvider,
         String travelBasis,
         String disclaimer,
         long seed,
@@ -35,7 +37,29 @@ public record Itinerary(
             LocalTime endOfDay,
             Workload workload,
             Money cost,
-            List<String> warnings) {}
+            List<String> warnings,
+            Ordering ordering,
+            Route route,
+            List<String> navigationUrls) {}
+
+    /**
+     * Stop order for one day. Costs are minutes on the symmetrised matrix (d(i,j)+d(j,i))/2 over base and stops;
+     * {@code applied} is the order used (DOUBLE_TREE, INSERTION or TRIVIAL). {@code guaranteeApplies} (tour ≤
+     * 2·optimal on that symmetric objective) is true only for a closed tour on a validated metric matrix. The
+     * real timeline uses the directed legs.
+     */
+    public record Ordering(
+            String applied,
+            String method,
+            double insertionCost,
+            Double doubleTreeCost,
+            Double mstCost,
+            Double nearestNeighbourCost,
+            Double exactCost,
+            boolean metric,
+            boolean guaranteeApplies,
+            List<String> metricViolations,
+            String note) {}
 
     /**
      * One visit. {@code kind}: FIXED (booked time), KEEP (kept from a previous plan), MUST_VISIT, COVER (Set

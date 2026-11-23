@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/client'
 import { DiscoverPage } from './features/discover/DiscoverPage'
+import { PlanPage } from './features/plan/PlanPage'
 
 type Health = { status: string }
 
@@ -33,6 +34,9 @@ export default function App() {
               <NavLink to="/discover" className={nav}>
                 Discover
               </NavLink>
+              <NavLink to="/plan" className={nav}>
+                Plan
+              </NavLink>
             </nav>
             <span className="ml-auto">
               <ApiStatus />
@@ -43,6 +47,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/discover" replace />} />
             <Route path="/discover" element={<DiscoverPage />} />
+            <Route path="/plan" element={<PlanPage />} />
           </Routes>
         </main>
         <footer className="mx-auto max-w-6xl px-4 py-6 text-xs text-zinc-500">

@@ -5,6 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.tripweaver.common.ApiException;
 import com.tripweaver.place.PlaceHours;
 import com.tripweaver.place.PlaceSummary;
+import com.tripweaver.routing.EstimateTravel;
+import com.tripweaver.routing.LatLon;
+import com.tripweaver.routing.Route;
+import com.tripweaver.routing.RoutingService;
+import com.tripweaver.routing.TransportMode;
+import com.tripweaver.routing.TravelMatrix;
+import com.tripweaver.routing.TravelProvider;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +35,7 @@ class ItineraryPlannerTest {
 
     final List<PlaceSummary> places = new ArrayList<>();
     final Map<UUID, PlaceHours> hours = new HashMap<>();
+    TravelProvider travel = EstimateTravel.INSTANCE;
 
     static UUID id(String n) {
         return UUID.nameUUIDFromBytes(n.getBytes());
@@ -90,7 +98,7 @@ class ItineraryPlannerTest {
 
     Itinerary plan(String json) {
         String body = "{\"baseLat\":" + BLAT + ",\"baseLon\":" + BLON + "," + json + "}";
-        return ItineraryPlanner.plan(places, hours::get, JSON.readValue(body, ItineraryRequest.class));
+        return ItineraryPlanner.plan(places, hours::get, travel, JSON.readValue(body, ItineraryRequest.class));
     }
 
     ApiException fails(String json) {
@@ -393,5 +401,101 @@ class ItineraryPlannerTest {
         assertEquals(LocalTime.of(13, 0), d.meals().getFirst().start());
         assertEquals(0, d.workload().mealMinutes());
         assertTimelinesFit(it);
+    }
+
+    // ---------------------------------------------------------------- Phase 7: route ordering
+
+    @Test
+    void closedDailyTourVisitsEachStopOnceAndReturnsToBase() {
+        cluster(6, "beach", 0.02);
+        cluster(4, "heritage", -0.015);
+        Itinerary it = plan(
+                "\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5,\"heritage\":5}," + "\"pace\":\"PACKED\"");
+        Itinerary.Day d = it.days().getFirst();
+        int n = d.stops().size();
+        assertTrue(n >= 3);
+        Itinerary.Ordering o = d.ordering();
+        assertEquals("double-tree", o.method());
+        assertTrue(o.metric(), o.metricViolations().toString());
+        assertTrue(o.guaranteeApplies());
+        assertTrue(o.mstCost() <= o.exactCost() + 1e-9, "MST is a lower bound");
+        assertTrue(o.doubleTreeCost() <= 2 * o.exactCost() + 1e-9, "2-approximation");
+        assertTrue(o.exactCost() <= o.nearestNeighbourCost() + 1e-9);
+        assertTrue(o.exactCost() <= o.insertionCost() + 1e-9);
+        Route r = d.route();
+        assertEquals(n + 1, r.legs().size(), "base → stops → base");
+        assertArrayEquals(new double[] {BLON, BLAT}, r.geometry().getFirst(), 1e-9);
+        assertArrayEquals(new double[] {BLON, BLAT}, r.geometry().getLast(), 1e-9);
+        assertEquals(n + 2, r.geometry().size()); // straight-line estimate draws base, stops, base
+        assertFalse(d.navigationUrls().isEmpty());
+        assertTrue(d.navigationUrls().getFirst().contains("origin=15.500000,73.800000"));
+        assertEquals("ESTIMATE", it.travelProvider());
+        assertTimelinesFit(it);
+    }
+
+    @Test
+    void nonMetricTravelTimesGetNoApproximationClaim() {
+        cluster(6, "beach", 0.02);
+        travel = new TravelProvider() {
+            @Override
+            public TravelMatrix matrix(List<LatLon> pts, TransportMode mode) {
+                int n = pts.size();
+                int[][] m = new int[n][n];
+                double[][] km = new double[n][n];
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++)
+                        if (i != j) m[i][j] = i == 0 || j == 0 ? 5 : 40; // stop↔stop longer than via base
+                return new TravelMatrix(m, km, "TEST", "test", 0, List.of());
+            }
+
+            @Override
+            public Route route(List<LatLon> w, TransportMode mode) {
+                return EstimateTravel.INSTANCE.route(w, mode);
+            }
+        };
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5},\"pace\":\"PACKED\"");
+        Itinerary.Ordering o = it.days().getFirst().ordering();
+        assertTrue(it.days().getFirst().stops().size() >= 2);
+        assertFalse(o.metric());
+        assertFalse(o.guaranteeApplies());
+        assertFalse(o.metricViolations().isEmpty());
+        assertTimelinesFit(it);
+    }
+
+    @Test
+    void openRouteDayEndsAtLastStopWithoutAGuarantee() {
+        cluster(5, "beach", 0.02);
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5},\"returnToBase\":false");
+        Itinerary.Day d = it.days().getFirst();
+        assertEquals("double-tree-open-path", d.ordering().method());
+        assertFalse(d.ordering().guaranteeApplies());
+        assertEquals(d.stops().size(), d.route().legs().size(), "no return leg");
+        assertEquals(0, d.returnTravelMinutes());
+    }
+
+    @Test
+    void fixedBookingKeepsItsTimeWhenTheDayIsReordered() {
+        cluster(6, "beach", 0.02);
+        PlaceSummary spa = add("Spa", "family", -0.02, 0.01, 60, 60);
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5},\"pace\":\"PACKED\","
+                + "\"fixedStops\":[{\"placeId\":\"" + spa.id() + "\",\"day\":1,\"start\":\"11:00\"}]");
+        Itinerary.Stop s = it.days().getFirst().stops().stream()
+                .filter(x -> x.place().name().equals("Spa"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(LocalTime.of(11, 0), s.start());
+        assertTimelinesFit(it);
+    }
+
+    @Test
+    void routingOutageStillProducesALabelledPlan() {
+        cluster(4, "beach", 0.02);
+        travel = new RoutingService("http://127.0.0.1:9", 300);
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5}");
+        assertFalse(it.days().getFirst().stops().isEmpty());
+        assertEquals("ESTIMATE", it.travelProvider());
+        assertTrue(
+                it.warnings().stream().anyMatch(w -> w.contains("unavailable")),
+                it.warnings().toString());
     }
 }

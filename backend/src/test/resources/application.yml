@@ -4,5 +4,7 @@ spring:
     username: sa
     password: ""
 tripweaver:
+  routing:
+    osrm-url: ""
   catalogue:
     auto-import: false

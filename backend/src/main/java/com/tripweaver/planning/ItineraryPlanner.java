@@ -1,11 +1,23 @@
 package com.tripweaver.planning;
 
+import com.tripweaver.algorithms.tsp.DoubleTreeTsp;
+import com.tripweaver.algorithms.tsp.ExactTsp;
+import com.tripweaver.algorithms.tsp.MetricReport;
+import com.tripweaver.algorithms.tsp.MetricValidator;
+import com.tripweaver.algorithms.tsp.NearestNeighbourTsp;
+import com.tripweaver.algorithms.tsp.TourResult;
 import com.tripweaver.common.ApiException;
 import com.tripweaver.place.PlaceHours;
 import com.tripweaver.place.PlaceSummary;
 import com.tripweaver.recommendation.RecommendationEngine;
 import com.tripweaver.recommendation.RecommendationRequest;
 import com.tripweaver.recommendation.RecommendationResult;
+import com.tripweaver.routing.LatLon;
+import com.tripweaver.routing.NavigationLinks;
+import com.tripweaver.routing.Route;
+import com.tripweaver.routing.TransportMode;
+import com.tripweaver.routing.TravelMatrix;
+import com.tripweaver.routing.TravelProvider;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -56,9 +68,13 @@ public final class ItineraryPlanner {
 
     private ItineraryPlanner() {}
 
-    public static Itinerary plan(List<PlaceSummary> catalogue, Function<UUID, PlaceHours> hours, ItineraryRequest req) {
+    public static Itinerary plan(
+            List<PlaceSummary> catalogue,
+            Function<UUID, PlaceHours> hours,
+            TravelProvider travel,
+            ItineraryRequest req) {
         validate(req);
-        return new Run(catalogue, hours, req).execute();
+        return new Run(catalogue, hours, travel, req).execute();
     }
 
     // ---------------------------------------------------------------- validation
@@ -125,6 +141,7 @@ public final class ItineraryPlanner {
         final PlaceSummary p;
         String kind;
         final double value;
+        int idx; // row in the travel matrix (0 = base)
         final Set<String> covers;
         final Integer fixedStart, fixedMinutes;
         final OpeningHours oh;
@@ -221,6 +238,9 @@ public final class ItineraryPlanner {
     static final class Run {
         final List<PlaceSummary> catalogue;
         final Function<UUID, PlaceHours> hours;
+        final TravelProvider travel;
+        TravelMatrix matrix;
+        final List<String> routingWarnings = new ArrayList<>();
         final ItineraryRequest req;
         final TransportMode mode;
         final int party;
@@ -237,7 +257,12 @@ public final class ItineraryPlanner {
         Double limit;
         long evaluations;
 
-        Run(List<PlaceSummary> catalogue, Function<UUID, PlaceHours> hours, ItineraryRequest req) {
+        Run(
+                List<PlaceSummary> catalogue,
+                Function<UUID, PlaceHours> hours,
+                TravelProvider travel,
+                ItineraryRequest req) {
+            this.travel = travel;
             this.catalogue = catalogue;
             this.hours = hours;
             this.req = req;
@@ -268,12 +293,14 @@ public final class ItineraryPlanner {
             }
 
             recommend(start);
+            buildMatrix();
             placeFixed();
             placeKept();
             placeMustVisits();
             checkMandatoryBudget();
             fillOptional();
             enforceHardBudget();
+            orderDays();
             return build();
         }
 
@@ -380,7 +407,8 @@ public final class ItineraryPlanner {
                 pendingMeals.add(new Object[] {"Dinner", DINNER_FROM, DINNER_FROM + 120});
 
             int t = d.start(), act = 0, travel = 0, meal = 0, buf = 0, wait = 0, high = 0, trans = 0, load = 0;
-            double km = 0, lat = req.baseLat(), lon = req.baseLon();
+            double km = 0;
+            int prev = 0;
             String prevRegion = null;
             List<Timed> out = new ArrayList<>();
             List<Itinerary.Meal> meals = new ArrayList<>();
@@ -396,8 +424,8 @@ public final class ItineraryPlanner {
                     t += pace.mealMinutes();
                     meal += pace.mealMinutes();
                 }
-                double legKm = mode.roadKm(lat, lon, v.p.lat(), v.p.lon());
-                int tm = mode.minutes(legKm);
+                double legKm = matrix.km()[prev][v.idx];
+                int tm = matrix.minutes()[prev][v.idx];
                 t += tm;
                 travel += tm;
                 km += legKm;
@@ -435,13 +463,12 @@ public final class ItineraryPlanner {
                 prevRegion = v.p.regionSlug();
                 if ("HIGH".equals(v.p.intensity())) high++;
                 load += "HIGH".equals(v.p.intensity()) ? 3 : "MODERATE".equals(v.p.intensity()) ? 2 : 1;
-                lat = v.p.lat();
-                lon = v.p.lon();
+                prev = v.idx;
             }
             int back = 0;
             if (d.returnToBase() && !order.isEmpty()) {
-                double legKm = mode.roadKm(lat, lon, req.baseLat(), req.baseLon());
-                back = mode.minutes(legKm);
+                double legKm = matrix.km()[prev][0];
+                back = matrix.minutes()[prev][0];
                 t += back;
                 travel += back;
                 km += legKm;
@@ -871,6 +898,106 @@ public final class ItineraryPlanner {
                     round(kMax / party));
         }
 
+        // ------------------------------------------------------------ travel and route ordering (Phase 7)
+
+        /** One directed travel matrix over the base (row 0) and every candidate. */
+        void buildMatrix() {
+            List<LatLon> pts = new ArrayList<>();
+            pts.add(new LatLon(req.baseLat(), req.baseLon()));
+            for (Visit v : candidates.values()) {
+                v.idx = pts.size();
+                pts.add(new LatLon(v.p.lat(), v.p.lon()));
+            }
+            matrix = travel.matrix(pts, mode);
+            routingWarnings.addAll(matrix.warnings());
+        }
+
+        final List<Itinerary.Ordering> orderings = new ArrayList<>();
+
+        /**
+         * Reorders each day with Metric TSP Double-Tree on the symmetrised travel minutes over base + stops: a closed
+         * tour when the day returns to the base, otherwise an open path from the base to the current last stop (no
+         * bound claimed). The new order is applied only if the day stays feasible with the directed legs (fixed
+         * bookings, opening hours, day window) and the symmetric tour is shorter than the insertion order.
+         * Nearest-neighbour and, for small days, the exact optimum are reported for comparison.
+         */
+        void orderDays() {
+            for (int d = 0; d < days.size(); d++) {
+                List<Visit> cur = plan.get(d);
+                DayCtx ctx = days.get(d);
+                if (cur.size() < 2) {
+                    orderings.add(
+                            cur.isEmpty()
+                                    ? null
+                                    : new Itinerary.Ordering(
+                                            "TRIVIAL",
+                                            "single stop",
+                                            0,
+                                            null,
+                                            null,
+                                            null,
+                                            null,
+                                            true,
+                                            false,
+                                            List.of(),
+                                            "One stop: nothing to order."));
+                    continue;
+                }
+                int n = cur.size() + 1;
+                int[] node = new int[n];
+                for (int i = 1; i < n; i++) node[i] = cur.get(i - 1).idx;
+                double[][] sym = new double[n][n];
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++)
+                        if (i != j)
+                            sym[i][j] = (matrix.minutes()[node[i]][node[j]] + matrix.minutes()[node[j]][node[i]]) / 2.0;
+                MetricReport metric = MetricValidator.validate(sym);
+                boolean closed = ctx.returnToBase();
+                int[] insertion = new int[closed ? n + 1 : n];
+                for (int i = 0; i < n; i++) insertion[i] = i;
+                double insCost = TourResult.cost(sym, insertion);
+
+                TourResult dt = closed ? DoubleTreeTsp.closedTour(sym, 0) : DoubleTreeTsp.openPath(sym, 0, n - 1);
+                Double nn = closed ? NearestNeighbourTsp.closedTour(sym, 0).cost() : null;
+                Double exact = closed && n <= 10 ? ExactTsp.closedTour(sym, 0).cost() : null;
+
+                List<Visit> reordered = new ArrayList<>();
+                for (int k : dt.tour()) if (k != 0) reordered.add(cur.get(k - 1));
+                Sim sim = simulate(ctx, reordered);
+                String applied, note;
+                if (!sim.ok()) {
+                    applied = "INSERTION";
+                    note = "Double-Tree order breaks a hard constraint (" + sim.failure()
+                            + "); kept the insertion order.";
+                } else if (dt.cost() < insCost - 1e-9) {
+                    applied = "DOUBLE_TREE";
+                    note = String.format(
+                            "Double-Tree order saves %.0f min over the insertion order.", insCost - dt.cost());
+                    plan.set(d, reordered);
+                    sims.set(d, sim);
+                } else {
+                    applied = "INSERTION";
+                    note = "The insertion order was already as short as the Double-Tree order.";
+                }
+                boolean guarantee = closed && dt.approximationGuaranteeApplies();
+                if (closed && !guarantee)
+                    note += " No 2-approximation claim: the travel times break the triangle inequality.";
+                if (!closed) note += " Open path: no approximation bound is claimed.";
+                orderings.add(new Itinerary.Ordering(
+                        applied,
+                        dt.method(),
+                        round(insCost),
+                        round(dt.cost()),
+                        round(dt.mstCost()),
+                        nn == null ? null : round(nn),
+                        exact == null ? null : round(exact),
+                        metric.isMetric(),
+                        guarantee,
+                        metric.violations(),
+                        note));
+            }
+        }
+
         // ------------------------------------------------------------ output
 
         Itinerary build() {
@@ -914,6 +1041,13 @@ public final class ItineraryPlanner {
                                     status),
                             v.reason));
                 }
+                List<LatLon> waypoints = new ArrayList<>();
+                waypoints.add(new LatLon(req.baseLat(), req.baseLon()));
+                for (Timed t : s.stops())
+                    waypoints.add(new LatLon(t.v().p.lat(), t.v().p.lon()));
+                if (ctx.returnToBase() && !s.stops().isEmpty()) waypoints.add(waypoints.getFirst());
+                Route route = s.stops().isEmpty() ? null : travel.route(waypoints, mode);
+                if (route != null) routingWarnings.addAll(route.warnings());
                 List<String> dw = new ArrayList<>();
                 for (var m : s.meals())
                     if (m.label().equals("Lunch") && minutes(m.start()) > LUNCH_LATE)
@@ -952,7 +1086,10 @@ public final class ItineraryPlanner {
                                 Pace.label(util).name()),
                         new Itinerary.Money(
                                 dMin, dMax, dUnknown, dUnknown ? "INCOMPLETE" : "KNOWN", "Entry/activity costs"),
-                        List.copyOf(dw)));
+                        List.copyOf(dw),
+                        orderings.get(d),
+                        route,
+                        NavigationLinks.google(waypoints, mode)));
             }
 
             Set<UUID> scheduled = scheduledIds();
@@ -1002,6 +1139,7 @@ public final class ItineraryPlanner {
                 warnings.add(unknownHours + " stop(s) have no sourced opening hours; check before visiting.");
             for (String w : rec.warnings()) if (w.startsWith("Wheelchair")) warnings.add(w);
             for (var r : repairs) warnings.add(r.reason() + ": " + r.name() + " (day " + r.day() + ").");
+            for (String w : routingWarnings) if (!warnings.contains(w)) warnings.add(w);
 
             return new Itinerary(
                     List.copyOf(outDays),
@@ -1011,7 +1149,8 @@ public final class ItineraryPlanner {
                     List.copyOf(unscheduled),
                     List.copyOf(repairs),
                     List.copyOf(warnings),
-                    mode.basis(),
+                    matrix.provider(),
+                    matrix.basis(),
                     DISCLAIMER,
                     rec.seed(),
                     new Itinerary.Stats(

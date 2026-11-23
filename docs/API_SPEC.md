@@ -148,3 +148,21 @@ Errors:
 - 400: `BAD_BASE`, `BAD_DAYS`, `BAD_PARTY`, `BAD_DAY_WINDOW`, `BAD_BUDGET`, `BAD_COST`, `BAD_OVERRIDE`, `BAD_FIXED_STOP`, `BAD_KEEP_STOP`, plus the recommendation codes.
 - 422: `INFEASIBLE_PLAN`, with `details.conflicts` and `details.suggestedRelaxations`.
 - 422: `BUDGET_INFEASIBLE`, with `details.estimatedMaximum`, `details.budget` and `details.currency`.
+
+### Phase 7 additions to `itinerary`
+- Top level:
+  - `travelProvider`: `OSRM` or `ESTIMATE`.
+  - `travelBasis`: describes how travel times were computed.
+  - Routing fallbacks and unroutable legs appear in `warnings`.
+- `days[].ordering`: null when the day has no stops.
+  - `applied`: DOUBLE_TREE, INSERTION or TRIVIAL.
+  - `method`: `double-tree` or `double-tree-open-path`.
+  - Costs, in minutes on the symmetrised matrix: `insertionCost`, `doubleTreeCost`, `mstCost`, `nearestNeighbourCost` (closed tours only), `exactCost` (closed tours with ≤ 9 stops).
+  - `metric`, `guaranteeApplies` (closed tour and metric matrix only), `metricViolations[]` and `note`.
+- `days[].route`: null when the day has no stops.
+  - `provider`, `basis`.
+  - `geometry`: `[[lon, lat], …]`.
+  - `legs[]`: `{minutes, km}`, driving time only.
+  - `totalMinutes`, `totalKm`, `warnings[]`.
+  - A closed day has `stops + 1` legs and ends at the base.
+- `days[].navigationUrls[]`: Google Maps directions URLs with at most 9 waypoints each, chained (each segment starts where the previous one ended). Travel mode is `driving`, or `walking` for WALK.

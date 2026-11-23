@@ -14,5 +14,15 @@ services:
       interval: 5s
       retries: 10
 
+  # Road routing. Prepare data first: scripts/osrm-prepare.sh. Start: docker compose --profile routing up -d osrm
+  osrm:
+    profiles: ["routing"]
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    command: osrm-routed --algorithm ch --max-table-size 1000 /data/western-zone.osrm
+    volumes:
+      - ./data/osrm:/data:ro
+    ports:
+      - "5001:5000"
+
 volumes:
   tripweaver-db:

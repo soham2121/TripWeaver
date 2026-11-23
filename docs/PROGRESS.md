@@ -11,7 +11,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 4 — Discovery and search | Passed |
 | 5 — Recommendation and selection | Passed |
 | 6 — Time, budget, pace, scheduling | Passed |
-| 7 — Route ordering and navigation | Not started |
+| 7 — Route ordering and navigation | Passed |
 | 8 — Road-trip planner | Not started |
 | 9 — Itinerary UI and editing | Not started |
 | 10 — Sharing and collaboration | Not started |
@@ -197,3 +197,44 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - Q2 routing decision (OSRM or labelled estimate).
 - Per-day distance matrix from the scheduled stops.
 - Double-Tree reordering must keep fixed bookings and meal timing.
+
+## Phase 7 report — Daily route ordering and navigation (passed)
+
+**Checklist:** all 12 items done (see `IMPLEMENTATION.md`).
+- **Routing:** self-hosted OSRM v6.0.0 (car, Contraction Hierarchies) via Docker Compose profile `routing` and `scripts/osrm-prepare.sh` (D27).
+- **Travel matrix:** one directed `/table` call over base + candidates per plan. Unroutable pairs use the estimate and are counted.
+- **Ordering:**
+  - Metric validation per day on the symmetrised matrix.
+  - Double-Tree closed tour from the base, or an open path with no bound claimed.
+  - The order is applied only when it stays feasible with directed legs and is shorter (D28).
+  - Fixed bookings, opening hours and meals are re-checked by simulation, so mandatory events keep their times.
+  - Nearest-neighbour and the exact optimum are reported next to Double-Tree.
+- **Route and navigation:** OSRM `/route` geometry per day. Google Maps URLs with at most 9 waypoints each, chained.
+- **Provider failure:** falls back to the labelled straight-line estimate with a warning. The plan is still returned.
+- **UI:** new `/plan` page. Interest weights, a base picked by Trie autocomplete, dates, pace and transport. Day tabs show the map route with numbered stops, the timeline, meals, ordering comparison, Google Maps link(s), warnings and infeasibility conflicts.
+
+**Commands and results:**
+- `./mvnw -o test spotless:check`: 171 tests, 0 failures, 0 errors.
+  - New: `RoutingServiceTest` 5 (OSRM parsing against a local stub server, null pairs, error code, outage fallback, walking), `NavigationLinksTest` 3, five route-ordering tests in `ItineraryPlannerTest`, plus route and ordering assertions in `ItineraryApiTest`.
+  - `package` repackaging is blocked while the local server runs (Windows jar lock), as in Phase 6.
+- `npm test`: 11 passed (new `PlanPage.test.tsx` 3). `npm run lint`: 0 errors (existing warnings only). `npm run format:check` clean. `npm run build` OK.
+- OSRM preprocessing: extract about 4 min, contract about 5 min (16 CPUs). A 121-point table takes 67 ms on CH; on MLD it took 543 ms.
+- Live check, OSRM, same demo as Phase 6 (Candolim, 3 days):
+  - Plan time 46 ms.
+  - Road distances per day: 14.3, 36.5 and 17.0 km.
+  - Every day's matrix is metric, so the guarantee applies. Insertion order is within 0.5 min of exact; Double-Tree is 0.5–1.5 min longer, so insertion is kept and the response says so.
+  - Open-route day: no guarantee; the Double-Tree order broke opening hours, so the insertion order was kept with that reason.
+
+**Gate:**
+- Every stop appears exactly once (asserted).
+- A closed tour returns to the base (`legs = stops + 1`, geometry ends at the base).
+- The approximation claim appears only for a closed tour on a validated metric matrix (non-metric and open-path tests).
+- Real legs are labelled: `travelProvider` OSRM or ESTIMATE, `travelBasis`, route `provider`/`basis`, and outage warnings.
+
+**Known limits:**
+- No unit test drives the "Double-Tree adopted" branch with real data, because insertion was always as short. The comparison numbers are reported per day.
+- OSRM speeds are free-flow car speeds.
+- The plan page is minimal; Phase 9 builds the full itinerary UI.
+- No visual browser check: the Chrome extension was not connected. Page served (HTTP 200) and component tests pass.
+
+**Next phase prerequisites (Phase 8):** a road-trip input model, Mumbai-to-Goa routing (the western-zone OSRM graph covers it), and segment and overnight handling.

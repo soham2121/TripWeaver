@@ -226,3 +226,21 @@ After the last stop, return to the base if set and reject if that ends after the
 **Complexity.** Each greedy round costs O(C · D · n²) for C candidates, D days and n stops per day. The 7-day packed demo needed 215,786 simulations and took 115 ms.
 
 **Why it is not optimal.** Insertion is myopic: an early cheap insertion can block a better combination later. Repair is bounded to 3 removals on one day. Stop order is insertion order; Phase 7 reorders each day with Double-Tree.
+
+---
+
+## Product integration: daily route ordering (Phase 7)
+
+`ItineraryPlanner.orderDays()` runs after day allocation and repair.
+
+1. **Travel matrix.** One directed matrix over base + all candidates: OSRM `/table` (CH), or the labelled estimate. The scheduler itself (Phase 6) runs on these directed minutes, so day feasibility uses road times.
+2. **Per-day metric instance.** Vertices are the base and the day's stops. Each distance is the symmetrised minutes `(d(i,j) + d(j,i)) / 2`. `MetricValidator` checks every condition, including the triangle inequality (O(n³) with n ≤ 9).
+3. **Double-Tree.**
+   - A day that returns to base gets `closedTour(sym, base)`.
+   - Otherwise `openPath(sym, base, lastStop)`, with no bound claimed.
+   - The claim "≤ 2 × optimal" is shown only when the day is closed and the matrix is metric. It concerns the symmetric objective, not directed traffic time.
+4. **Feasibility and choice.** The Double-Tree order is re-simulated with directed legs, opening hours, fixed bookings, meals and the day window. It replaces the insertion order only if feasible and shorter.
+5. **Baselines in every response:** insertion order, nearest neighbour, and the exact Held–Karp optimum for days with ≤ 9 stops.
+6. **Geometry and navigation.** OSRM `/route` returns the day's polyline and directed legs (estimate fallback: straight segments). Google Maps URLs carry ≤ 9 waypoints each and are chained.
+
+Tests cover: each stop visited once, the closed tour returning to base, MST ≤ exact, Double-Tree ≤ 2·exact, no claim on non-metric times, no claim on open paths, fixed booking times kept after reordering, and a routing outage still producing a labelled plan.

@@ -113,3 +113,28 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 ## D26 — Trip-scaled candidate pool
 - **Decision:** The planner asks the recommendation engine for K = 40 × days (max 500) with `quotaPerInterest` = 3 × days (max 15, still capped at K/|interests|). `fill` now returns the whole remaining pool, not only the first 40. The preview endpoint keeps K = 60 and quota 3.
 - **Why:** With 3 reserved slots per interest, a 3-day Goa plan ran out of non-food candidates by day 3.
+
+## D27 — Road routing with self-hosted OSRM (resolves Q2)
+- **Decision:** The user chose OSRM. The setup:
+  - **Image:** `ghcr.io/project-osrm/osrm-backend:v6.0.0`, car profile, Contraction Hierarchies.
+  - **Network:** the whole Geofabrik western-zone extract (no cropping tool needed; the extract fits in memory).
+  - **Service:** Docker Compose profile `routing`, host port 5001, `--max-table-size 1000`.
+  - **Config:** the backend reads `OSRM_BASE_URL`, default `http://127.0.0.1:5001`.
+- **Matrix:** each plan makes one `/table` call over the base plus all candidates. The result is directed: road times can differ by direction. Each leg adds the transport mode overhead (car 5 min), the same as the estimate.
+- **Route:** one `/route` call per day for geometry and legs.
+- **Fallback:** on any failure (not running, timeout, error code) the plan uses the labelled straight-line estimate and says so in `warnings`. Pairs OSRM cannot route use the estimate and are counted.
+- **Walking:** always the estimate, since no foot profile is built.
+- **Why CH, not MLD:** a 121-point table took 0.5 s on MLD, which dominated plan time.
+- **Cost if wrong:**
+  - OSRM car speeds are free-flow speeds; traffic is not modelled.
+  - Scooter and taxi use car times.
+  - The preprocessed files take about 3 GB of disk.
+
+## D28 — Daily ordering: Double-Tree on symmetrised times, applied only if feasible and shorter
+- **Decision:** after day allocation, each day is ordered by Double-Tree:
+  - The input is the symmetrised matrix (d(i,j) + d(j,i)) / 2 over base and stops.
+  - Closed tour when the day returns to base. Otherwise an open path from base to the current last stop; no bound is claimed for open paths.
+  - `MetricValidator` decides whether the 2-approximation claim may be shown.
+  - The new order is re-simulated with the real directed legs. It is used only if every hard constraint still holds and the symmetric tour is shorter than the insertion order. Otherwise the insertion order stays, and the response says why.
+  - Nearest-neighbour and the exact Held–Karp optimum (days with ≤ 9 stops) are reported for comparison.
+- **Why:** the cheapest-insertion schedule is often already near optimal. On the Goa demo it was within 1–6 min of the exact optimum, and replacing it with a longer tour would be worse for the user. The guarantee applies to the symmetric objective only, not to directed travel time.

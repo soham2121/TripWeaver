@@ -2,6 +2,7 @@ package com.tripweaver.planning;
 
 import com.tripweaver.common.AlgorithmRunLog;
 import com.tripweaver.place.PlaceCatalogue;
+import com.tripweaver.routing.RoutingService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -13,8 +14,10 @@ public class ItineraryService {
 
     private final PlaceCatalogue catalogue;
     private final AlgorithmRunLog runs;
+    private final RoutingService routing;
 
-    public ItineraryService(PlaceCatalogue catalogue, AlgorithmRunLog runs) {
+    public ItineraryService(PlaceCatalogue catalogue, AlgorithmRunLog runs, RoutingService routing) {
+        this.routing = routing;
         this.catalogue = catalogue;
         this.runs = runs;
     }
@@ -24,7 +27,7 @@ public class ItineraryService {
     public Response generate(ItineraryRequest req) {
         var places = catalogue.index(req.destination()).all();
         long t0 = System.nanoTime();
-        Itinerary it = ItineraryPlanner.plan(places, catalogue::hours, req);
+        Itinerary it = ItineraryPlanner.plan(places, catalogue::hours, routing, req);
         long micros = (System.nanoTime() - t0) / 1000;
 
         Map<String, Object> s = new LinkedHashMap<>();
@@ -45,6 +48,16 @@ public class ItineraryService {
         s.put("insertionEvaluations", it.stats().insertionEvaluations());
         s.put("uncovered", it.coverage().uncovered());
         s.put("budgetStatus", it.budget().status());
+        s.put("travelProvider", it.travelProvider());
+        s.put(
+                "ordering",
+                it.days().stream()
+                        .filter(d -> d.ordering() != null)
+                        .map(d -> Map.of(
+                                "day", d.day(),
+                                "applied", d.ordering().applied(),
+                                "guarantee", d.ordering().guaranteeApplies()))
+                        .toList());
         UUID runId = runs.record(
                 "itinerary",
                 null,
