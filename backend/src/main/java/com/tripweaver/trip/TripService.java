@@ -643,7 +643,14 @@ public class TripService {
                 description.trim(),
                 rounded,
                 t);
-        history(trip, u, "EXPENSE_ADDED", "Added expense \"" + description.trim() + "\" (₹" + rounded + ")");
+        history(
+                trip,
+                u,
+                "EXPENSE_ADDED",
+                "Added expense \"" + description.trim() + "\" (₹"
+                        + java.math.BigDecimal.valueOf(rounded)
+                                .stripTrailingZeros()
+                                .toPlainString() + ")");
         return new Expense(id, description.trim(), rounded, payer, p.username(), t);
     }
 

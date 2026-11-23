@@ -397,3 +397,26 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 - No email invitations; members are added by username.
 - Updates arrive by polling, not WebSockets.
 - Deleting a trip archives it; there is no restore screen.
+
+## Browser check of Phases 9–10 (2026-11-23, Chrome, real backend + OSRM + PostgreSQL)
+
+Clicked through the app in Chrome. Working end to end:
+- Home page and the Goa beach weekend demo.
+- Itinerary edits: remove, with times recomputed.
+- Account creation, then saving the trip.
+- Trip page: owner panels, local times, expense added, edit with a version bump.
+- Read-only link: opens in a second tab, then fails after revoke.
+- Mumbai to Goa road-trip demo: route on the map, detours and the day timeline.
+
+Bugs found and fixed:
+- **Map stayed blank everywhere.** Present since Phase 4; the component tests mock the map, so they never caught it.
+  - Cause: MapLibre's web worker failed to load ("Worker failed to load"). Vite pre-bundles the library in dev and does not emit the worker in production builds.
+  - Fix: `setWorkerUrl` with the `?url` import of `maplibre-gl-worker.mjs`. The build now emits the worker, and tiles, routes and markers draw.
+- **Times shown in UTC.** Trip, shared and trip-list times were raw UTC. They now use the viewer's local time (`localTime`).
+- **Budget table overflowed** in the narrower trip-page column. The overview and budget now stack at full width.
+- **Revoked link stayed visible.** A revoked link remained in the "copy this link" box; it is now cleared (test added).
+- **Trip titles said "(default)".** The default base name was "Candolim (default)". It is now "Candolim", and the hint is shown only next to the base.
+- **Plans could start in the past.** Plans without a start date began today even in the evening. After 17:00 they now start tomorrow.
+- **Expense amounts in history** showed "₹1200.0". They now show "₹1200" (test added).
+
+Found, not fixed (needs a decision): nightlife places with no sourced opening hours can be scheduled in the morning (Viva Pub at 09:04 in the beach-weekend demo).

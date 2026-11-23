@@ -14,6 +14,14 @@ export function formatCost(c: Pick<CostEstimate, 'min' | 'max' | 'currency' | 'b
   return amount === 'Free' ? amount : amount + basis
 }
 
+/** A server timestamp (UTC instant) in the viewer's local time, e.g. "23 Nov 2026, 9:20 pm". */
+export function localTime(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 export function formatDuration(min: number | null, max: number | null): string | null {
   if (min == null || max == null) return null
   const f = (m: number) => (m >= 60 ? `${+(m / 60).toFixed(1)} h` : `${m} min`)

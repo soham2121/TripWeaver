@@ -23,7 +23,7 @@ export interface PlanForm {
   foodPerPersonPerDay: string
 }
 
-export const CANDOLIM: Base = { name: 'Candolim (default)', lat: 15.5202, lon: 73.7659 }
+export const CANDOLIM: Base = { name: 'Candolim', lat: 15.5202, lon: 73.7659 }
 
 export const DEFAULT_PLAN: PlanForm = {
   weights: {},

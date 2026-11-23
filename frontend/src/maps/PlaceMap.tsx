@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
+
+// MapLibre looks for its worker next to its own module. Vite pre-bundles the library (dev) and does not emit the
+// worker (build), so that lookup fails and the map stays blank. Point it at the worker file Vite serves and emits.
+maplibregl.setWorkerUrl(workerUrl)
 
 export interface MapPoint {
   id: string

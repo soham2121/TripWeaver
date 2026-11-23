@@ -5,6 +5,7 @@ import { tripsApi } from '../../api/trips'
 import type { Itinerary } from '../../types/itinerary'
 import type { RoadTrip } from '../../types/roadtrip'
 import type { SharedTrip } from '../../types/trip'
+import { localTime } from '../../utils/format'
 import { ItineraryView } from '../plan/ItineraryView'
 import { RoadTripView } from '../roadtrip/RoadTripPage'
 
@@ -41,7 +42,7 @@ export function SharedPage() {
       <div className="rounded border border-zinc-200 bg-white p-3 text-sm">
         <h1 className="text-lg font-semibold">{trip.title}</h1>
         <p className="text-xs text-zinc-600">
-          Read-only shared trip · updated {trip.updatedAt.replace('T', ' ').slice(0, 16)}
+          Read-only shared trip · updated {localTime(trip.updatedAt)}
         </p>
       </div>
       {!trip.result && <p className="text-sm text-zinc-500">This trip has no plan yet.</p>}

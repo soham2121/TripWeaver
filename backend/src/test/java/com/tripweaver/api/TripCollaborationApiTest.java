@@ -287,6 +287,12 @@ class TripCollaborationApiTest {
         assertEquals(3600, e.get("total").asDouble(), 0.001);
         assertEquals(1200, e.get("perPerson").asDouble(), 0.001);
         assertEquals(2, e.get("items").size());
+        assertEquals(
+                "Added expense \"Lunch\" (₹600)",
+                read(call(get(t + "/history"), owner, null))
+                        .get(0)
+                        .get("summary")
+                        .asString());
         for (JsonNode b : e.get("balances")) {
             double expected = b.get("username").asString().equals(owner.username())
                     ? 1800

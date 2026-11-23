@@ -87,7 +87,7 @@ export function ItineraryView({
         )}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="space-y-3">
         <section className="rounded border border-zinc-200 bg-white p-3">
           <h2 className="mb-2 font-medium">Overview and workload</h2>
           <ul className="space-y-2">

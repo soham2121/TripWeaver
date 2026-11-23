@@ -13,6 +13,7 @@ import type {
   TripSuggestion,
 } from '../../types/trip'
 import { Autocomplete } from '../discover/Autocomplete'
+import { localTime } from '../../utils/format'
 import { applyEdit, type Edit } from '../plan/edits'
 import { ItineraryView } from '../plan/ItineraryView'
 import { RoadTripView } from '../roadtrip/RoadTripPage'
@@ -25,7 +26,7 @@ const ROLE_TEXT: Record<Role, string> = {
 
 const POLL_MS = 15_000
 const inr = (n: number) => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })
-const when = (s: string) => s.replace('T', ' ').slice(0, 16)
+const when = localTime
 const box = 'rounded border border-zinc-200 bg-white p-3 text-sm'
 const btn = 'rounded px-2 py-1 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100 disabled:opacity-50'
 
@@ -248,7 +249,12 @@ export function TripPage() {
                         type="button"
                         className={btn}
                         disabled={busy}
-                        onClick={() => void act(() => tripsApi.revokeShareLink(id, l.id))}
+                        onClick={() =>
+                          void act(
+                            () => tripsApi.revokeShareLink(id, l.id),
+                            () => setNewLink(null),
+                          )
+                        }
                       >
                         Revoke
                       </button>

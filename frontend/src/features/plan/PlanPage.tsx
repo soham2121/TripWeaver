@@ -8,7 +8,7 @@ import type { Itinerary, ItineraryRequest, Pace, Transport } from '../../types/i
 import { INTERESTS, type Suggestion } from '../../types/place'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
-import { DEFAULT_PLAN, PLAN_DEMOS, type PlanForm } from '../demos'
+import { CANDOLIM, DEFAULT_PLAN, PLAN_DEMOS, type PlanForm } from '../demos'
 import { SaveTrip } from '../trips/SaveTrip'
 import { applyEdit, type Edit } from './edits'
 import { ItineraryView } from './ItineraryView'
@@ -37,6 +37,13 @@ function todayForm(now = new Date()): { form: PlanForm; note: string } {
   }
 }
 
+/** No date chosen: today, or tomorrow once the day is mostly over (after 17:00). */
+function defaultStart(now = new Date()): string {
+  const d = new Date(now)
+  if (d.getHours() >= 17) d.setDate(d.getDate() + 1)
+  return isoDate(d)
+}
+
 function toRequest(f: PlanForm): ItineraryRequest {
   const budget = Number(f.budgetAmount)
   const food = Number(f.foodPerPersonPerDay)
@@ -44,7 +51,7 @@ function toRequest(f: PlanForm): ItineraryRequest {
     baseLat: f.base.lat,
     baseLon: f.base.lon,
     baseName: f.base.name,
-    startDate: f.startDate || undefined,
+    startDate: f.startDate || defaultStart(),
     days: Math.max(1, f.days),
     partySize: f.partySize,
     interests: f.weights,
@@ -212,7 +219,10 @@ export function PlanPage() {
                 label="Stay near"
                 placeholder="Search a place for your base"
               />
-              <p className="text-xs text-zinc-500">Base: {form.base.name}</p>
+              <p className="text-xs text-zinc-500">
+                Base: {form.base.name}
+                {form.base === CANDOLIM && ' (default)'}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <label>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { tripsApi } from '../../api/trips'
 import type { TripSummary } from '../../types/trip'
+import { localTime } from '../../utils/format'
 import { useAuth } from '../auth/auth'
 
 /** Trips the user owns or was added to. */
@@ -51,7 +52,7 @@ export function TripsPage() {
               <span className="font-medium">{t.title}</span>{' '}
               <span className="text-xs text-zinc-500">
                 {t.kind === 'ROAD_TRIP' ? 'road trip' : 'itinerary'} · {t.role.toLowerCase()} ·
-                owner {t.ownerUsername} · updated {t.updatedAt.replace('T', ' ').slice(0, 16)}
+                owner {t.ownerUsername} · updated {localTime(t.updatedAt)}
               </span>
             </Link>
           </li>

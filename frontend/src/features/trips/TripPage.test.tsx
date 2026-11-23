@@ -140,6 +140,7 @@ test('owner sees members and can create and revoke a read-only link', async () =
   expect(await screen.findByDisplayValue(/\/shared\/TOKEN123$/)).toBeInTheDocument()
   await userEvent.click(await screen.findByRole('button', { name: /revoke/i }))
   await vi.waitFor(() => expect(calls(fetch, 'DELETE', /share-links\/l1$/)).toHaveLength(1))
+  await vi.waitFor(() => expect(screen.queryByDisplayValue(/TOKEN123/)).toBeNull())
 })
 
 test('viewer gets a read-only itinerary without edit, member or share controls', async () => {
