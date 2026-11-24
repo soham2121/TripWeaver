@@ -549,3 +549,22 @@ Bugs found and fixed:
 - Rehearse the demo once.
 - Commit, then tag the final version.
 - Viva practice.
+
+## Hosting: Vercel + Render (2026-11-24, night)
+
+- **Frontend:** Vercel project `trip-weaver` builds `frontend/` from `dev` (https://trip-weaver-tau.vercel.app).
+  - `frontend/vercel.json` forwards `/api/*` to Render.
+  - Every other path is served `index.html`, so deep links work.
+- **API:** Render Docker web service `tripweaver-jo2x` (Singapore, free plan) built from `backend/Dockerfile`, using the Supabase database.
+  - Startup on the free instance takes about 90 s.
+  - A build filter limits rebuilds to backend and data changes.
+- **Live checks through the Vercel URL, all passing:**
+  - health;
+  - Trie autocomplete;
+  - town search;
+  - a 4-day plan with a hard budget (2.4 s warm);
+  - the Mumbai–Goa road trip (labelled estimates, no OSRM);
+  - an invalid share link (404);
+  - a wrong login (401).
+- **Not checked live:** sign-in, saving and sharing with a real account. The Chrome extension was disconnected, and no account was created on the production site.
+- **Cleanup for later:** Spring logs an unused generated default-user password at startup (`UserDetailsServiceAutoConfiguration`). It is harmless, because the app has its own login, but it could be excluded.

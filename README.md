@@ -79,7 +79,7 @@ Rebuild or move the catalogue: it is derived entirely from files in Git (`data/s
 Vercel serves the React app. The Java API runs on Render as a Docker web service, using the same Supabase database. Vercel forwards `/api/*` to Render, so the browser sees one origin and the session cookie works.
 
 - **Vercel:** the project builds `frontend/` from the `dev` branch. `frontend/vercel.json` rewrites `/api/*` to the Render URL and every other path to `index.html`, so deep links such as `/shared/<token>` work.
-- **Render:** web service, runtime Docker, Dockerfile path `backend/Dockerfile`, Docker context `.` (repo root), branch `dev`, health check `/api/v1/health`.
+- **Render:** service `tripweaver-jo2x` (https://tripweaver-jo2x.onrender.com), runtime Docker, Dockerfile path `backend/Dockerfile`, Docker context `.` (repo root), branch `dev`, health check `/api/v1/health`, Singapore, free plan. A build filter (`backend/**`, `data/sample/**`, `data/curated/**`, `.dockerignore`) skips rebuilds for frontend-only or docs-only commits.
   - Environment: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD`, the same values as in `.env`.
   - The image already sets `OSRM_BASE_URL=""` (labelled estimates, no OSRM), `DB_POOL_SIZE=3` and the data directory.
   - The free plan sleeps after 15 minutes without traffic, and the first request then takes about a minute. Open the site shortly before a demo.
