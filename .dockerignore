@@ -1,0 +1,12 @@
+# Only backend/ and data/sample + data/curated go into the API image.
+.env
+**/.env
+.git
+frontend
+**/node_modules
+backend/target
+data/raw
+data/osrm
+data/processed
+benchmark-results
+docs

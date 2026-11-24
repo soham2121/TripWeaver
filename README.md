@@ -69,10 +69,23 @@ Configuration comes from environment variables or a `.env` file at the repo root
 
 1. In the Supabase dashboard open **Connect → Session pooler** (IPv4). The direct `db.<ref>.supabase.co` host is IPv6-only on the Free plan.
 2. Copy `.env.example` to `.env` and uncomment the three `SPRING_DATASOURCE_*` lines: JDBC URL `jdbc:postgresql://<pooler host>:5432/postgres?sslmode=require`, user `postgres.<project-ref>`, and the database password. Never commit `.env`.
-3. Start the backend. Flyway creates the schema (V1–V6: catalogue, PostGIS geography column and GiST index, RLS on every table). The first start imports the Goa and Konkan catalogues (about 11,500 places, about 35 MB).
+3. Start the backend. Flyway creates the schema (V1–V7: catalogue, PostGIS geography column and GiST index, RLS on every table). The first start imports the Goa and Konkan catalogues (about 11,500 places, about 35 MB).
 4. Check: `supabase link --project-ref <ref>`, then `supabase db query --linked -f "$PWD/scripts/verify-db.sql"` (the CLI resolves relative paths against its workdir) (every `ok` must be true) and `supabase db advisors --linked`.
 
 Rebuild or move the catalogue: it is derived entirely from files in Git (`data/sample`, `data/curated`), so an empty database rebuilds it on start. `tripweaver.catalogue.reimport=true` forces a re-import (idempotent upsert by OSM id). User and trip data can be exported with `supabase db dump --linked --data-only`.
+
+### Hosting: Vercel (frontend) + Render (API)
+
+Vercel serves the React app. The Java API runs on Render as a Docker web service, using the same Supabase database. Vercel forwards `/api/*` to Render, so the browser sees one origin and the session cookie works.
+
+- **Vercel:** the project builds `frontend/` from the `dev` branch. `frontend/vercel.json` rewrites `/api/*` to the Render URL and every other path to `index.html`, so deep links such as `/shared/<token>` work.
+- **Render:** web service, runtime Docker, Dockerfile path `backend/Dockerfile`, Docker context `.` (repo root), branch `dev`, health check `/api/v1/health`.
+  - Environment: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD`, the same values as in `.env`.
+  - The image already sets `OSRM_BASE_URL=""` (labelled estimates, no OSRM), `DB_POOL_SIZE=3` and the data directory.
+  - The free plan sleeps after 15 minutes without traffic, and the first request then takes about a minute. Open the site shortly before a demo.
+- **Limits of the hosted version:**
+  - There is no road routing; travel times are labelled estimates.
+  - The sign-in and share-link rate limits count all visitors together, because every request arrives from Vercel's proxy.
 
 ### Maps, routing and navigation (no Google API)
 
