@@ -336,3 +336,16 @@
     opacity: 0;
   }
 }
+
+/* Save as PDF: while a plan's print sheet is shown, print only the sheet (components/PrintSheet.tsx). */
+@media print {
+  body.printing-sheet > #root {
+    display: none;
+  }
+  body.printing-sheet {
+    background: white;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

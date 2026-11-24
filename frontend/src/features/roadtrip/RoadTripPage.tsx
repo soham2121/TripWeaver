@@ -4,6 +4,7 @@ import { placesApi } from '../../api/places'
 import { roadTripsApi } from '../../api/roadTrips'
 import { BudgetTable } from '../../components/BudgetTable'
 import { ConfidenceBadge } from '../../components/ConfidenceBadge'
+import { PrintButton } from '../../components/PrintSheet'
 import { toProblem, type Problem } from '../../api/client'
 import { ProblemNotice, ProviderNotice } from '../../components/ProblemNotice'
 import type { MapPoint } from '../../maps/PlaceMap'
@@ -14,10 +15,15 @@ import type {
   RoadTripDay,
   RoadTripItem,
   RoadTripRequest,
+  RoadTripStay,
+  ReturnTrip,
   Waypoint,
 } from '../../types/roadtrip'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
+import { ItineraryView } from '../plan/ItineraryView'
+import { hhmm, hours, ITEM_TEXT, stayKind } from './format'
+import { RoadTripPrint } from './RoadTripPrint'
 import { SaveTrip } from '../trips/SaveTrip'
 
 const PlaceMap = lazy(() => import('../../maps/PlaceMap'))
@@ -33,6 +39,10 @@ interface Form {
   arriveBy: string
   maxDrivingHoursPerDay: number
   drivingDays: string
+  stayDays: string
+  planReturn: boolean
+  /** The way home picked from the last plan, sent again so a re-plan keeps it. */
+  returnChoice: number
   stayChoices: Record<string, string>
   weights: Record<string, number>
   maxDetourMinutes: number
@@ -61,6 +71,9 @@ const DEFAULT: Form = {
   arriveBy: '',
   maxDrivingHoursPerDay: 7,
   drivingDays: '',
+  stayDays: '',
+  planReturn: false,
+  returnChoice: 1,
   stayChoices: {},
   weights: {},
   maxDetourMinutes: 45,
@@ -78,6 +91,8 @@ const DEMOS: Record<string, Partial<Form>> = {
   'mumbai-goa': {
     weights: { heritage: 5, nature: 3, beach: 3 },
     maxDrivingHoursPerDay: 6,
+    stayDays: '2',
+    planReturn: true,
     mileageKmPerLitre: '15',
     fuelPricePerLitre: '101',
   },
@@ -94,6 +109,9 @@ function toRequest(f: Form): RoadTripRequest {
     arriveBy: f.arriveBy || undefined,
     maxDrivingHoursPerDay: f.maxDrivingHoursPerDay,
     drivingDays: num(f.drivingDays),
+    stayDays: num(f.stayDays),
+    planReturn: f.planReturn || undefined,
+    returnChoice: f.planReturn ? f.returnChoice : undefined,
     stayChoices: f.stayChoices,
     interests: f.weights,
     maxDetourMinutes: f.maxDetourMinutes,
@@ -348,6 +366,27 @@ export function RoadTripPage() {
             </span>
           </label>
           <label>
+            Days at destination (optional)
+            <input
+              type="number"
+              min={0}
+              max={14}
+              value={form.stayDays}
+              onChange={(e) => set('stayDays', e.target.value)}
+              className={input}
+            />
+            <span className="text-xs text-zinc-500">Plans your days there, like the Plan page</span>
+          </label>
+          <label className="col-span-2">
+            <input
+              type="checkbox"
+              checked={form.planReturn}
+              onChange={(e) => set('planReturn', e.target.checked)}
+            />{' '}
+            Plan the way home
+            <span className="block text-xs text-zinc-500">Four ways back after the stay</span>
+          </label>
+          <label>
             Arrive by (optional)
             <input
               type="datetime-local"
@@ -390,7 +429,7 @@ export function RoadTripPage() {
               </label>
             ))}
           </div>
-          <div className="mt-1 grid grid-cols-2 gap-2">
+          <div className="mt-1 grid grid-cols-2 items-end gap-2">
             <label>
               Max extra min per detour
               <input
@@ -470,6 +509,12 @@ export function RoadTripPage() {
                 setForm(f)
                 void plan(f)
               }}
+              onPickReturn={(n) => {
+                // All four are already planned: switch without a request, and keep the pick for saving.
+                setLastRequest({ ...lastRequest, returnChoice: n })
+                setForm((f) => ({ ...f, returnChoice: n }))
+                setResult({ ...result, returnTrip: { ...result.returnTrip!, chosen: n } })
+              }}
             />
           </div>
         )}
@@ -479,15 +524,22 @@ export function RoadTripPage() {
 }
 
 const dt = (s: string) => s.replace('T', ' ').slice(0, 16)
-const hours = (m: number) => `${Math.floor(m / 60)} h ${m % 60} min`
 
 export function RoadTripView({
   trip,
   onPickStay,
+  onPickReturn,
+  title = trip.segments.length
+    ? `Road trip: ${trip.segments[0].from} to ${trip.segments.at(-1)!.to}`
+    : 'Road trip',
 }: {
   trip: RoadTrip
+  /** Heading and PDF file name of the printable copy. */
+  title?: string
   /** Re-plans with this town as the night's stay; absent where the trip is read-only. */
   onPickStay?: (night: number, townKey: string) => void
+  /** Shows another way home (already planned); absent where the trip is read-only. */
+  onPickReturn?: (n: number) => void
 }) {
   const points = useMemo<MapPoint[]>(() => {
     const p: MapPoint[] = []
@@ -516,11 +568,15 @@ export function RoadTripView({
 
   return (
     <div className="space-y-3 text-sm">
+      <RoadTripPrint trip={trip} title={title} />
       <div className="space-y-1 card p-3">
-        <p className="font-medium">
-          {dt(trip.departure)} → {dt(trip.arrival)} · {hours(trip.totalDrivingMinutes)} driving ·{' '}
-          {Math.round(trip.totalKm)} km · {trip.nights} night(s)
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium">
+            {dt(trip.departure)} → {dt(trip.arrival)} · {hours(trip.totalDrivingMinutes)} driving ·{' '}
+            {Math.round(trip.totalKm)} km · {trip.nights} night(s)
+          </p>
+          <PrintButton />
+        </div>
         <ProviderNotice provider={trip.travelProvider} basis={trip.travelBasis} />
         <p className="text-zinc-500">{trip.disclaimer}</p>
         {trip.warnings.length > 0 && (
@@ -569,6 +625,18 @@ export function RoadTripView({
             driving to reach them, and how much there is to do. Places to stay are OpenStreetMap
             listings: availability and price unknown.
           </p>
+          <p className="mb-2 text-xs text-zinc-500">
+            <span className="inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+              Detour
+            </span>{' '}
+            rates the extra driving to leave the route for the town: 5/5 is on the route (under 15
+            min), one point less per extra 15 min, 1/5 at the 60 min limit.{' '}
+            <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+              Interests
+            </span>{' '}
+            rates the things to do within 15 km that match your interests (all of them when none are
+            ticked): one point per 4 places, 5/5 at 20 or more, 0/5 when none match.
+          </p>
           {trip.stayOptions.map((n) => (
             <div key={n.night} className="mb-2">
               <p>
@@ -577,8 +645,25 @@ export function RoadTripView({
               <ul className="ml-4 space-y-2">
                 {n.options.map((o) => (
                   <li key={o.key}>
-                    <span className={o.chosen ? 'font-medium' : ''}>{o.town}</span>:{' '}
-                    {hours(o.driveFromStartMinutes)} from the start
+                    <span className={o.chosen ? 'font-medium' : ''}>{o.town}</span>
+                    {!!o.detourRating && (
+                      <>
+                        {' '}
+                        <span
+                          className="inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800"
+                          title={`Detour ${o.detourRating}/5: ${o.detourMinutes} min of extra driving (5 = on the route)`}
+                        >
+                          Detour {o.detourRating}/5
+                        </span>{' '}
+                        <span
+                          className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
+                          title={`Interests ${o.interestRating ?? 0}/5: ${o.interestMatches ?? 0} matching thing(s) to do within 15 km (5 = 20 or more)`}
+                        >
+                          Interests {o.interestRating ?? 0}/5
+                        </span>
+                      </>
+                    )}
+                    : {hours(o.driveFromStartMinutes)} from the start
                     {o.detourMinutes > 0 && `, +${o.detourMinutes} min off the route`}
                     <div className="text-xs text-zinc-600">
                       {o.sights} thing(s) to do within 15 km
@@ -612,11 +697,41 @@ export function RoadTripView({
         <DayCard key={d.day} day={d} />
       ))}
 
+      {trip.stay && <StaySection trip={trip} stay={trip.stay} />}
+      {trip.returnTrip && <ReturnSection rt={trip.returnTrip} onPick={onPickReturn} />}
+
       <section className="card p-3">
         <h2 className="mb-3 text-base font-semibold">Budget</h2>
         <BudgetTable budget={trip.budget} />
       </section>
     </div>
+  )
+}
+
+/** The days at the destination, planned like the Plan page; read-only. */
+function StaySection({ trip, stay }: { trip: RoadTrip; stay: RoadTripStay }) {
+  const arrive = trip.days.at(-1)?.items.find((i) => i.type === 'ARRIVE')
+  const place = trip.segments.at(-1)?.to ?? arrive?.name ?? 'the destination'
+  return (
+    <section className="space-y-2">
+      <div className="card p-3">
+        <h2 className="text-base font-semibold">
+          Your stay in {place} · {stay.firstDay} to {stay.lastDay}
+        </h2>
+        <p>
+          {stay.nights} night(s) at {place}
+          {' · priced in the trip budget above'}
+        </p>
+        {stay.note && <p className="text-amber-700">{stay.note}</p>}
+      </div>
+      {stay.itinerary && arrive?.lat != null && arrive.lon != null && (
+        <ItineraryView
+          it={stay.itinerary}
+          base={{ lat: arrive.lat, lon: arrive.lon }}
+          printable={false}
+        />
+      )}
+    </section>
   )
 }
 
@@ -627,24 +742,64 @@ const NODE: Partial<Record<RoadTripItem['type'], string>> = {
   MEAL: 'bg-amber-400',
 }
 
-const ITEM_TEXT: Record<RoadTripItem['type'], (i: RoadTripItem) => string> = {
-  DEPART: (i) => `Leave ${i.name}`,
-  DRIVE: (i) => `Drive ${i.minutes} min, ${i.km.toFixed(0)} km`,
-  REST: (i) => `${i.name} (${i.minutes} min)`,
-  MEAL: (i) => `${i.name} (${i.minutes} min)`,
-  DETOUR: (i) => `Detour: ${i.name} (${i.minutes} min)`,
-  WAYPOINT: (i) => `Stop: ${i.name}${i.minutes ? ` (${i.minutes} min)` : ''}`,
-  OVERNIGHT: (i) => `Overnight: ${i.name}`,
-  ARRIVE: (i) => `Arrive ${i.name}`,
+/** The four ways home as choices, then the chosen one's days. Without onPick the choice is read-only. */
+function ReturnSection({ rt, onPick }: { rt: ReturnTrip; onPick?: (n: number) => void }) {
+  const chosen = rt.options.find((o) => o.number === rt.chosen)?.plan
+  return (
+    <section className="space-y-2">
+      <fieldset className="card space-y-2 p-3">
+        <legend className="sr-only">Way home</legend>
+        <h2 className="text-base font-semibold">Way home</h2>
+        {rt.options.map((o) => {
+          const p = o.plan
+          const summary = p
+            ? `${hours(p.totalDrivingMinutes)} · ${Math.round(p.totalKm)} km · ${p.nights} night(s) · ${p.days.flatMap((d) => d.items).filter((i) => i.type === 'DETOUR' || i.type === 'WAYPOINT').length} stop(s)`
+            : ''
+          return (
+            <label
+              key={o.number}
+              className={`flex items-start gap-2 rounded p-2 ${o.number === rt.chosen ? 'bg-teal-50' : ''} ${p ? '' : 'text-zinc-500'}`}
+            >
+              <input
+                type="radio"
+                name="way-home"
+                aria-label={`${o.number}. ${o.label}`}
+                checked={o.number === rt.chosen}
+                disabled={!p || !onPick}
+                onChange={() => onPick?.(o.number)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">
+                  {o.number}. {o.label}
+                </span>
+                {summary && <span className="block text-xs text-zinc-600">{summary}</span>}
+                {o.note && <span className="block text-xs text-amber-700">{o.note}</span>}
+              </span>
+            </label>
+          )
+        })}
+      </fieldset>
+      {chosen?.days.map((d) => (
+        <DayCard key={'r' + d.day} day={d} label="Return day" />
+      ))}
+      {chosen && (
+        <section className="card p-3">
+          <h2 className="mb-3 text-base font-semibold">Budget for the way home</h2>
+          <BudgetTable budget={chosen.budget} />
+        </section>
+      )}
+    </section>
+  )
 }
 
-function DayCard({ day }: { day: RoadTripDay }) {
+function DayCard({ day, label = 'Day' }: { day: RoadTripDay; label?: string }) {
   const o = day.overnight
   return (
     <section className="card p-3">
       <h2 className="text-base font-semibold">
-        Day {day.day} · {day.date} · {hours(day.drivingMinutes)} driving, {Math.round(day.km)} km ·
-        longest stretch {day.longestContinuousDrivingMinutes} min
+        {label} {day.day} · {day.date} · {hours(day.drivingMinutes)} driving, {Math.round(day.km)}{' '}
+        km · longest stretch {day.longestContinuousDrivingMinutes} min
       </h2>
       {/* Route rail: drives are legs on the line, everything else is a stop on it. */}
       <ol
@@ -663,9 +818,7 @@ function DayCard({ day }: { day: RoadTripDay }) {
                 className={`absolute top-1.5 left-0 size-3 rounded-full ring-4 ring-white ${NODE[i.type] ?? 'bg-teal-700'}`}
               />
             )}
-            <span className="tabular mr-2 text-xs font-medium text-zinc-500">
-              {i.start.slice(11, 16)}
-            </span>
+            <span className="tabular mr-2 text-xs font-medium text-zinc-500">{hhmm(i.start)}</span>
             {ITEM_TEXT[i.type](i)}
             {i.note && <span className="text-xs text-zinc-500"> · {i.note}</span>}
           </li>
@@ -673,12 +826,7 @@ function DayCard({ day }: { day: RoadTripDay }) {
       </ol>
       {o && (
         <p className="mt-1">
-          {o.kind === 'SUGGESTED'
-            ? 'Suggested stay'
-            : o.kind === 'TOWN'
-              ? 'Town stay'
-              : 'Your stay'}
-          : {o.name} <ConfidenceBadge confidence={o.confidence as Confidence} />{' '}
+          {stayKind(o)}: {o.name} <ConfidenceBadge confidence={o.confidence as Confidence} />{' '}
           <span className="text-xs text-zinc-500">{o.note}</span>
         </p>
       )}

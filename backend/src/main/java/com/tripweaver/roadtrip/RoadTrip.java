@@ -9,7 +9,11 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-/** A planned road trip: driving days, fixed segments with optional detours, costs and labels. */
+/**
+ * A planned road trip: driving days, fixed segments with optional detours, costs and labels, and the stay at the
+ * destination ({@code stay}, null without {@code stayDays}) and the ways home ({@code returnTrip}, null without
+ * {@code planReturn}).
+ */
 public record RoadTrip(
         List<Day> days,
         List<Segment> segments,
@@ -25,7 +29,57 @@ public record RoadTrip(
         String travelProvider,
         String travelBasis,
         String disclaimer,
-        long seed) {
+        long seed,
+        Stay stay,
+        ReturnTrip returnTrip) {
+
+    /** This trip with its stay at the destination. */
+    public RoadTrip withStay(Stay s) {
+        return new RoadTrip(
+                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
+                detourCandidates, warnings, travelProvider, travelBasis, disclaimer, seed, s, returnTrip);
+    }
+
+    /** This trip with its ways home. */
+    public RoadTrip withReturn(ReturnTrip r) {
+        return new RoadTrip(
+                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
+                detourCandidates, warnings, travelProvider, travelBasis, disclaimer, seed, stay, r);
+    }
+
+    /** This trip with more warnings. */
+    public RoadTrip withWarnings(List<String> more) {
+        List<String> w = new java.util.ArrayList<>(warnings);
+        w.addAll(more);
+        return new RoadTrip(
+                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
+                detourCandidates, List.copyOf(w), travelProvider, travelBasis, disclaimer, seed, stay, returnTrip);
+    }
+
+    /** The ways home; {@code chosen} is the option shown (1..4). */
+    public record ReturnTrip(int chosen, List<ReturnOption> options) {}
+
+    /**
+     * One way home. kind: DIRECT, SAME_WAY, NEW_STOPS or DIFFERENT_TOWN. {@code via} is the town of a DIFFERENT_TOWN
+     * option. {@code plan} is null when the option could not be built; {@code note} then says why (or remarks on a
+     * built one).
+     */
+    public record ReturnOption(int number, String kind, String label, String via, RoadTrip plan, String note) {}
+
+    /**
+     * Days at the destination, from {@code firstDay} to {@code lastDay}. {@code nights} are slept there: from the
+     * arrival night up to the morning after {@code lastDay}. {@code destination} (catalogue slug) and {@code
+     * itinerary} are null when the destination has no place data or the stay could not be planned; {@code note}
+     * then says why.
+     */
+    public record Stay(
+            int days,
+            LocalDate firstDay,
+            LocalDate lastDay,
+            int nights,
+            String destination,
+            Itinerary itinerary,
+            String note) {}
 
     public record Day(
             int day,
@@ -61,6 +115,9 @@ public record RoadTrip(
     /**
      * A gazetteer city or town near the route with places to stay. {@code key} goes back in {@code stayChoices};
      * {@code sights} counts things to do within 15 km and {@code stays} places to stay within 5 km (OSM listings).
+     * {@code detourRating} (1–5, 5 = on the route) rates the extra driving to reach the town; {@code interestRating}
+     * (0–5) rates {@code interestMatches}, the things to do within 15 km that match the trip's interests (all
+     * interests when none are chosen).
      */
     public record TownOption(
             String town,
@@ -73,6 +130,9 @@ public record RoadTrip(
             List<String> topSights,
             int stays,
             List<String> stayNames,
+            int detourRating,
+            int interestMatches,
+            int interestRating,
             boolean chosen) {}
 
     /**

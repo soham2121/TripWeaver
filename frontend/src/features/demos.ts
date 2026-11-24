@@ -111,6 +111,6 @@ export const ROAD_DEMOS: Demo[] = [
     id: 'mumbai-goa',
     title: 'Mumbai to Goa drive',
     description:
-      'Two driving days with heritage and nature detours and a suggested overnight stay.',
+      'Two driving days with heritage and nature detours, a suggested overnight stay and two days in Goa.',
   },
 ]

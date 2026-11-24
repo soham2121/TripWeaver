@@ -138,6 +138,10 @@ public final class RoadTripPlanner {
                 || r.maxTotalDetourMinutes() > 600)
             throw ApiException.badRequest("BAD_DETOUR_LIMIT", "Detour limits out of range");
         if (r.partySize() < 1 || r.partySize() > 20) throw ApiException.badRequest("BAD_PARTY", "partySize 1..20");
+        if (r.stayDays() < 0 || r.stayDays() > StayPlanner.MAX_DAYS)
+            throw ApiException.badRequest("BAD_STAY_DAYS", "stayDays must be 0.." + StayPlanner.MAX_DAYS);
+        if (r.returnChoice() < 1 || r.returnChoice() > 4)
+            throw ApiException.badRequest("BAD_RETURN_CHOICE", "returnChoice must be 1..4");
         if (r.drivingDays() != null && (r.drivingDays() < 1 || r.drivingDays() > 14))
             throw ApiException.badRequest("BAD_DAYS", "drivingDays must be 1..14");
         for (Double v :
@@ -500,6 +504,7 @@ public final class RoadTripPlanner {
                     .filter(p -> p.activity() && !NOT_THINGS_TO_DO.contains(p.primaryCategory()))
                     .toList();
             for (Town t : towns) {
+                if (req.avoidTowns().contains(t.key())) continue;
                 if (fixed.stream().anyMatch(f -> Geo.haversineKm(f.lat, f.lon, t.lat(), t.lon()) < TOWN_STAY_RADIUS_KM))
                     continue;
                 Seg best = null;
@@ -607,12 +612,23 @@ public final class RoadTripPlanner {
                                     .toList(),
                             t.stays.size(),
                             t.stays.stream().limit(5).map(PlaceSummary::name).toList(),
+                            detourRating((int) o[2]),
+                            matches(t),
+                            interestRating(matches(t)),
                             o == chosen));
                 }
                 stayOptions.add(new RoadTrip.NightStays(k, target, List.copyOf(opts)));
                 planned.add((Node) chosen[0]);
                 prevAt = (int) chosen[1];
             }
+        }
+
+        /** Things to do around a town stay that match the interests; every one when no interest is chosen. */
+        int matches(Node t) {
+            return (int) t.sights.stream()
+                    .filter(p -> req.interests().isEmpty()
+                            || p.interests().stream().anyMatch(req.interests()::containsKey))
+                    .count();
         }
 
         /** Rank order; each detour within its own limit, the set within count and total-time limits. */
@@ -1039,7 +1055,7 @@ public final class RoadTripPlanner {
             return new RoadTrip(
                     List.copyOf(days),
                     List.copyOf(segments),
-                    budget(chosen, totalKm, nights, days.size()),
+                    budget(chosen, totalKm, nights, days.size(), res.arrival()),
                     LocalDateTime.of(departureDate(), req.departureTime()),
                     res.arrival(),
                     totalDrive,
@@ -1051,10 +1067,12 @@ public final class RoadTripPlanner {
                     provider,
                     basis,
                     DISCLAIMER,
-                    seed);
+                    seed,
+                    null,
+                    null);
         }
 
-        Itinerary.Budget budget(List<Node> chosen, double km, int nights, int dayCount) {
+        Itinerary.Budget budget(List<Node> chosen, double km, int nights, int dayCount, LocalDateTime arrival) {
             int party = req.partySize();
             List<Itinerary.BudgetLine> lines = new ArrayList<>();
             int vehicles = mode.vehicles(party);
@@ -1094,10 +1112,39 @@ public final class RoadTripPlanner {
                                         "ACCOMMODATION",
                                         "Overnight stay",
                                         "Suggested stays are OpenStreetMap listings; prices and availability unknown"));
+            // A stay that starts on the arrival day pays that day's food in the stay budget, and its nights here.
+            boolean stay = req.stayDays() > 0;
+            boolean arrivalInStay = stay && StayPlanner.arrivalDayCounts(arrival);
+            if (stay) {
+                String where = req.destination().name() == null || req.destination().name().isBlank()
+                        ? "the destination"
+                        : req.destination().name();
+                int stayNights = StayPlanner.nights(req.stayDays(), arrival);
+                Double rate = req.accommodationPerNight();
+                lines.add(
+                        rate != null
+                                ? new Itinerary.BudgetLine(
+                                        "ACCOMMODATION",
+                                        "Stay at " + where,
+                                        rate * stayNights,
+                                        rate * stayNights,
+                                        "USER_ENTERED",
+                                        "PER_NIGHT",
+                                        stayNights + " night(s) at the destination")
+                                : unknown("ACCOMMODATION", "Stay at " + where, "Enter the nightly accommodation cost"));
+            }
             if (req.foodPerPersonPerDay() != null) {
-                double f = req.foodPerPersonPerDay() * party * dayCount;
+                int foodDays = arrivalInStay ? dayCount - 1 : dayCount;
+                double f = req.foodPerPersonPerDay() * party * foodDays;
                 lines.add(new Itinerary.BudgetLine(
-                        "FOOD", "Food", f, f, "USER_ENTERED", "PER_PERSON_PER_DAY", "daily amount × party × days"));
+                        "FOOD",
+                        "Food",
+                        f,
+                        f,
+                        "USER_ENTERED",
+                        "PER_PERSON_PER_DAY",
+                        "daily amount × party × " + foodDays + " day(s)"
+                                + (arrivalInStay ? " (the arrival day is in the stay budget)" : "")));
             } else lines.add(unknown("FOOD", "Food", "Enter a daily food budget per person"));
             for (Node n : chosen) {
                 if (n.place.costs().isEmpty()) {
@@ -1155,6 +1202,19 @@ public final class RoadTripPlanner {
                     "The road trip cannot meet its hard limits.",
                     d);
         }
+    }
+
+    /**
+     * 1–5 over the allowed extra driving for a town stay: 5 under a quarter of {@link #TOWN_MAX_DETOUR_MINUTES}
+     * (0–14 min), down one per quarter, 1 at the limit.
+     */
+    static int detourRating(int detourMinutes) {
+        return 5 - Math.min(4, Math.max(0, detourMinutes) * 4 / TOWN_MAX_DETOUR_MINUTES);
+    }
+
+    /** 0–5 on the same scale the town ranking uses: 5 at {@link #TOWN_SIGHTS_FULL} matching things to do. */
+    static int interestRating(int matches) {
+        return (int) Math.min(5, Math.ceil(matches * 5 / TOWN_SIGHTS_FULL));
     }
 
     // ---------------------------------------------------------------- geometry helpers

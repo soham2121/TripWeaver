@@ -57,16 +57,17 @@ public class RoutingService implements TravelProvider {
     public TravelMatrix matrix(List<LatLon> points, TransportMode mode) {
         if (!usesOsrm(mode) || points.size() < 2) return EstimateTravel.INSTANCE.matrix(points, mode);
         try {
-            JsonNode t = get("/table/v1/driving/" + coords(points) + "?annotations=duration,distance");
             int n = points.size();
+            JsonNode[][] dur = new JsonNode[n][n], dist = new JsonNode[n][n];
+            table(points, dur, dist);
             int[][] min = new int[n][n];
             double[][] km = new double[n][n];
             int estimated = 0;
             for (int i = 0; i < n; i++)
                 for (int j = 0; j < n; j++) {
                     if (i == j) continue;
-                    JsonNode s = t.get("durations").get(i).get(j);
-                    JsonNode m = t.get("distances").get(i).get(j);
+                    JsonNode s = dur[i][j];
+                    JsonNode m = dist[i][j];
                     if (s == null || s.isNull() || m == null || m.isNull()) {
                         km[i][j] = EstimateTravel.leg(points.get(i), points.get(j), mode);
                         min[i][j] = mode.minutes(km[i][j]);
@@ -85,6 +86,42 @@ public class RoutingService implements TravelProvider {
             log.warn("OSRM table failed: {}", e.toString());
             return EstimateTravel.INSTANCE.matrix(points, mode, List.of(UNAVAILABLE));
         }
+    }
+
+    /** OSRM's default --max-table-size; the public demo server enforces it (larger requests get TooBig). */
+    static final int MAX_TABLE_COORDS = 100;
+
+    /**
+     * Fills the directed duration and distance tables. Up to {@link #MAX_TABLE_COORDS} points take one request;
+     * more are split into blocks of half that size, one request per (source block, destination block) pair.
+     */
+    private void table(List<LatLon> points, JsonNode[][] dur, JsonNode[][] dist) throws Exception {
+        int n = points.size();
+        int b = n <= MAX_TABLE_COORDS ? n : MAX_TABLE_COORDS / 2;
+        for (int r = 0; r < n; r += b)
+            for (int c = 0; c < n; c += b) {
+                List<LatLon> rows = points.subList(r, Math.min(n, r + b));
+                List<LatLon> cols = points.subList(c, Math.min(n, c + b));
+                String q = "?annotations=duration,distance";
+                List<LatLon> pts = rows;
+                if (r != c) {
+                    pts = new ArrayList<>(rows);
+                    pts.addAll(cols);
+                    q += "&sources=" + range(0, rows.size()) + "&destinations=" + range(rows.size(), pts.size());
+                }
+                JsonNode t = get("/table/v1/driving/" + coords(pts) + q);
+                for (int i = 0; i < rows.size(); i++)
+                    for (int j = 0; j < cols.size(); j++) {
+                        dur[r + i][c + j] = t.get("durations").get(i).get(j);
+                        dist[r + i][c + j] = t.get("distances").get(i).get(j);
+                    }
+            }
+    }
+
+    private static String range(int from, int to) {
+        StringJoiner j = new StringJoiner(";");
+        for (int i = from; i < to; i++) j.add(Integer.toString(i));
+        return j.toString();
     }
 
     @Override

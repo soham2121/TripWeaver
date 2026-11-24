@@ -425,6 +425,7 @@ export function PlanPage() {
               base={{ lat: lastRequest.baseLat, lon: lastRequest.baseLon }}
               onEdit={onEdit}
               busy={loading}
+              title={`${result.days.length}-day trip from ${lastRequest.baseName ?? 'Goa'}`}
             />
           </div>
         )}

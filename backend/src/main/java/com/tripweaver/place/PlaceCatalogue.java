@@ -1,6 +1,7 @@
 package com.tripweaver.place;
 
 import com.tripweaver.common.ApiException;
+import com.tripweaver.common.Geo;
 import com.tripweaver.place.ingest.CatalogueImportedEvent;
 import com.tripweaver.search.PlaceSearchIndex;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.event.EventListener;
@@ -40,6 +42,23 @@ public class PlaceCatalogue {
         PlaceSearchIndex idx = m.get(slug);
         if (idx == null) throw ApiException.notFound("Destination", slug);
         return idx;
+    }
+
+    /** The destination whose catalogue holds the place nearest to (lat, lon), if that place is within maxKm. */
+    public Optional<String> destinationNear(double lat, double lon, double maxKm) {
+        Map<String, PlaceSearchIndex> m = indexes;
+        if (m == null) m = reload();
+        String best = null;
+        double bestKm = maxKm;
+        for (var e : m.entrySet())
+            for (PlaceSummary p : e.getValue().all()) {
+                double d = Geo.haversineKm(lat, lon, p.lat(), p.lon());
+                if (d <= bestKm) {
+                    bestKm = d;
+                    best = e.getKey();
+                }
+            }
+        return Optional.ofNullable(best);
     }
 
     /** Every active place of every destination (road trips cross destinations). */

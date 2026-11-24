@@ -46,8 +46,10 @@ export function SharedPage() {
         </p>
       </div>
       {!trip.result && <p className="text-sm text-zinc-500">This trip has no plan yet.</p>}
-      {it && <ItineraryView it={it} base={base} />}
-      {trip.kind === 'ROAD_TRIP' && trip.result && <RoadTripView trip={trip.result as RoadTrip} />}
+      {it && <ItineraryView it={it} base={base} title={trip.title} />}
+      {trip.kind === 'ROAD_TRIP' && trip.result && (
+        <RoadTripView trip={trip.result as RoadTrip} title={trip.title} />
+      )}
     </div>
   )
 }

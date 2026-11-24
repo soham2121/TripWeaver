@@ -80,11 +80,19 @@ class RoadTripPlannerTest {
         return "{\"name\":\"" + name + "\",\"lat\":" + lat(t) + ",\"lon\":" + lon(t) + "}";
     }
 
-    RoadTrip plan(String json) {
+    RoadTripRequest request(String json) {
         String body = "{\"origin\":" + wp("Origin", 0) + ",\"destination\":" + wp("Destination", 1)
                 + ",\"departureDate\":\"2026-12-14\",\"departureTime\":\"07:00\"" + (json.isEmpty() ? "" : "," + json)
                 + "}";
-        return RoadTripPlanner.plan(places, towns, id -> null, travel, JSON.readValue(body, RoadTripRequest.class));
+        return JSON.readValue(body, RoadTripRequest.class);
+    }
+
+    RoadTrip plan(String json) {
+        return plan(request(json));
+    }
+
+    RoadTrip plan(RoadTripRequest req) {
+        return RoadTripPlanner.plan(places, towns, id -> null, travel, req);
     }
 
     ApiException fails(String json) {
@@ -146,6 +154,21 @@ class RoadTripPlannerTest {
     }
 
     @Test
+    void townStayRatings() {
+        assertEquals(5, RoadTripPlanner.detourRating(0));
+        assertEquals(5, RoadTripPlanner.detourRating(14));
+        assertEquals(4, RoadTripPlanner.detourRating(15));
+        assertEquals(2, RoadTripPlanner.detourRating(59));
+        assertEquals(1, RoadTripPlanner.detourRating(60));
+        assertEquals(0, RoadTripPlanner.interestRating(0));
+        assertEquals(1, RoadTripPlanner.interestRating(1));
+        assertEquals(1, RoadTripPlanner.interestRating(4));
+        assertEquals(2, RoadTripPlanner.interestRating(5));
+        assertEquals(5, RoadTripPlanner.interestRating(20));
+        assertEquals(5, RoadTripPlanner.interestRating(80));
+    }
+
+    @Test
     void drivingDaysStopAtATownNearMidwayWithThingsToDo() {
         town("Early", 0.2, 0.01, 2, 0);
         town("Midtown", 0.5, 0.01, 2, 1);
@@ -171,6 +194,12 @@ class RoadTripPlannerTest {
         assertEquals(20, busy.sights());
         assertEquals(1, busy.stays());
         assertEquals(3, busy.topSights().size());
+        assertEquals(RoadTripPlanner.detourRating(busy.detourMinutes()), busy.detourRating());
+        assertEquals(20, busy.interestMatches()); // no interests chosen: every heritage sight counts
+        assertEquals(5, busy.interestRating());
+        RoadTrip.TownOption beachOnly = plan(split + ",\"interests\":{\"beach\":5}").stayOptions().getFirst()
+                .options().stream().filter(x -> x.town().equals("Busy")).findFirst().orElseThrow();
+        assertEquals(0, beachOnly.interestRating());
 
         // The user's pick from the options replaces the top town.
         String mid = n.options().get(1).key();

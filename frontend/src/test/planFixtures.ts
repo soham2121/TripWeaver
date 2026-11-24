@@ -1,5 +1,5 @@
 import type { ItineraryResponse, Stop } from '../types/itinerary'
-import type { RoadTripItem, RoadTripResponse } from '../types/roadtrip'
+import type { RoadTripItem, RoadTripResponse, RoadTripStay, ReturnTrip } from '../types/roadtrip'
 import { summary } from './fixtures'
 
 export const stop = (order: number, name: string, id: string): Stop => ({
@@ -138,7 +138,6 @@ export function itineraryResponse(): ItineraryResponse {
 const item = (
   type: RoadTripItem['type'],
   name: string,
-  date: string,
   start: string,
   minutes = 0,
   km = 0,
@@ -148,8 +147,8 @@ const item = (
   placeId: null,
   lat: 16,
   lon: 73.5,
-  start: `${date}T${start}:00`,
-  end: `${date}T${start}:00`,
+  start: `${start}:00`, // LocalTime, as the API sends it
+  end: `${start}:00`,
   minutes,
   km,
   note: null,
@@ -170,11 +169,11 @@ export function roadTripResponse(): RoadTripResponse {
           km: 380,
           longestContinuousDrivingMinutes: 120,
           items: [
-            item('DEPART', 'Mumbai (CSMT)', '2026-12-14', '07:00'),
-            item('DRIVE', 'Drive', '2026-12-14', '07:00', 12, 9),
-            item('DETOUR', 'Magen David Synagogue', '2026-12-14', '07:12', 33),
-            item('REST', 'Rest break (roadside; location approximate)', '2026-12-14', '09:10', 15),
-            item('OVERNIGHT', 'Manjunath', '2026-12-14', '17:00'),
+            item('DEPART', 'Mumbai (CSMT)', '07:00'),
+            item('DRIVE', 'Drive', '07:00', 12, 9),
+            item('DETOUR', 'Magen David Synagogue', '07:12', 33),
+            item('REST', 'Rest break (roadside; location approximate)', '09:10', 15),
+            item('OVERNIGHT', 'Manjunath', '17:00'),
           ],
           overnight: {
             name: 'Manjunath',
@@ -195,10 +194,7 @@ export function roadTripResponse(): RoadTripResponse {
           drivingMinutes: 200,
           km: 230,
           longestContinuousDrivingMinutes: 120,
-          items: [
-            item('DEPART', 'Manjunath', '2026-12-15', '08:00'),
-            item('ARRIVE', 'Candolim', '2026-12-15', '11:44'),
-          ],
+          items: [item('DEPART', 'Manjunath', '08:00'), item('ARRIVE', 'Candolim', '11:44')],
           overnight: null,
           navigationUrls: ['https://www.google.com/maps/dir/?api=1&origin=16.2,73.7'],
         },
@@ -284,5 +280,39 @@ export function roadTripResponse(): RoadTripResponse {
       disclaimer: 'Detour selection and day split are heuristics.',
       seed: 7,
     },
+  }
+}
+
+/** Two planned days at Candolim after the drive (shape of RoadTrip.stay). */
+export function stayFixture(): RoadTripStay {
+  return {
+    days: 2,
+    firstDay: '2026-12-15',
+    lastDay: '2026-12-16',
+    nights: 2,
+    destination: 'goa',
+    itinerary: itineraryResponse().itinerary,
+    note: null,
+  }
+}
+
+/** Four ways home: 1–3 planned (the outbound fixture reused), 4 could not be built. */
+export function returnFixture(chosen = 1): ReturnTrip {
+  const plan = { ...roadTripResponse().roadTrip, stay: null, returnTrip: null }
+  return {
+    chosen,
+    options: [
+      { number: 1, kind: 'DIRECT', label: 'Direct', via: null, plan, note: null },
+      { number: 2, kind: 'SAME_WAY', label: 'Same way back', via: null, plan, note: null },
+      { number: 3, kind: 'NEW_STOPS', label: 'Same road, new stops', via: null, plan, note: null },
+      {
+        number: 4,
+        kind: 'DIFFERENT_TOWN',
+        label: 'Through a different town',
+        via: null,
+        plan: null,
+        note: 'No town off the outbound road within a third more driving',
+      },
+    ],
   }
 }

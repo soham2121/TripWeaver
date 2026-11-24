@@ -19,6 +19,10 @@ import java.util.UUID;
  * @param maxTotalDetourMinutes added driving plus visit time over all detours
  * @param drivingDays when 2 or more, the drive is split into this many days with a town stay at each split
  * @param stayChoices night number to the town key the user picked from that night's town options
+ * @param stayDays days spent at the destination, planned as an itinerary based there (0 = no stay; 0..14)
+ * @param planReturn also plan four ways home (direct, same way back, same road with new stops, a different town)
+ * @param returnChoice the way home the user picked, 1..4
+ * @param avoidTowns town keys not to suggest as town stays (the way home avoids the outbound ones)
  */
 public record RoadTripRequest(
         Waypoint origin,
@@ -48,7 +52,11 @@ public record RoadTripRequest(
         Set<UUID> avoid,
         Long seed,
         Integer drivingDays,
-        Map<Integer, String> stayChoices) {
+        Map<Integer, String> stayChoices,
+        Integer stayDays,
+        Boolean planReturn,
+        Integer returnChoice,
+        Set<String> avoidTowns) {
 
     /** A fixed stop: coordinates or a catalogue place. {@code overnight} ends the day there. */
     public record Waypoint(String name, Double lat, Double lon, UUID placeId, Boolean overnight, Integer stayMinutes) {}
@@ -71,5 +79,9 @@ public record RoadTripRequest(
         transport = transport == null ? TransportMode.CAR : transport;
         avoid = avoid == null ? Set.of() : Set.copyOf(avoid);
         stayChoices = stayChoices == null ? Map.of() : Map.copyOf(stayChoices);
+        stayDays = stayDays == null ? 0 : stayDays;
+        planReturn = planReturn != null && planReturn;
+        returnChoice = returnChoice == null ? 1 : returnChoice;
+        avoidTowns = avoidTowns == null ? Set.of() : Set.copyOf(avoidTowns);
     }
 }

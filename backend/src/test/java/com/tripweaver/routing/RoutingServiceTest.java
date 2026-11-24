@@ -7,7 +7,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.StringJoiner;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,11 +24,15 @@ class RoutingServiceTest {
     final List<String> requests = new ArrayList<>();
 
     String start(String tableJson, String routeJson) throws IOException {
+        return start(path -> path.startsWith("/table") ? tableJson : routeJson);
+    }
+
+    String start(UnaryOperator<String> respond) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", ex -> {
             String path = ex.getRequestURI().toString();
             requests.add(path);
-            byte[] body = (path.startsWith("/table") ? tableJson : routeJson).getBytes(StandardCharsets.UTF_8);
+            byte[] body = respond.apply(path).getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().add("Content-Type", "application/json");
             ex.sendResponseHeaders(200, body.length);
             ex.getResponseBody().write(body);
@@ -77,6 +84,57 @@ class RoutingServiceTest {
         assertEquals(10, r.legs().get(1).minutes());
         assertEquals(6.1, r.legs().get(1).km(), 1e-9);
         assertEquals(8.6, r.totalKm(), 1e-9);
+    }
+
+    /**
+     * Stub of a 100-coordinate OSRM table: point k sits at lon 73 + k/1000. Travel from point a to point b takes
+     * (b + 1) minutes and covers (a + 1) km, so every cell shows which pair the blocks put there.
+     */
+    static String table(String path) {
+        String[] parts = path.substring("/table/v1/driving/".length()).split("[?]", 2);
+        int[] pts = Arrays.stream(parts[0].split(";"))
+                .mapToInt(c -> (int) Math.round((Double.parseDouble(c.split(",")[0]) - 73) * 1000))
+                .toArray();
+        if (pts.length > RoutingService.MAX_TABLE_COORDS) return "{\"code\":\"TooBig\"}";
+        int[] src = indices(parts[1], "sources", pts.length), dst = indices(parts[1], "destinations", pts.length);
+        StringBuilder d = new StringBuilder(), m = new StringBuilder();
+        for (int i : src) {
+            StringJoiner dr = new StringJoiner(",", "[", "]"), mr = new StringJoiner(",", "[", "]");
+            for (int j : dst) {
+                dr.add(Integer.toString(60 * (pts[j] + 1)));
+                mr.add(Integer.toString(1000 * (pts[i] + 1)));
+            }
+            d.append(d.isEmpty() ? "" : ",").append(dr);
+            m.append(m.isEmpty() ? "" : ",").append(mr);
+        }
+        return "{\"code\":\"Ok\",\"durations\":[" + d + "],\"distances\":[" + m + "]}";
+    }
+
+    static int[] indices(String query, String key, int n) {
+        for (String kv : query.split("&"))
+            if (kv.startsWith(key + "="))
+                return Arrays.stream(kv.substring(key.length() + 1).split(";")).mapToInt(Integer::parseInt).toArray();
+        return java.util.stream.IntStream.range(0, n).toArray();
+    }
+
+    @Test
+    void tablesOverTheCoordinateLimitAreSplitIntoBlocks() throws IOException {
+        RoutingService rs = new RoutingService(start(RoutingServiceTest::table), 2000);
+        List<LatLon> pts = new ArrayList<>();
+        for (int k = 0; k < 121; k++) pts.add(new LatLon(15.5, 73 + k / 1000.0)); // 3-day pool + base
+        TravelMatrix m = rs.matrix(pts, TransportMode.CAR);
+        assertEquals("OSRM", m.provider());
+        assertEquals(0, m.estimatedPairs());
+        assertEquals(9, requests.size()); // blocks of 50: 3 x 3
+        for (int i = 0; i < 121; i++)
+            for (int j = 0; j < 121; j++)
+                if (i != j) {
+                    assertEquals(j + 1 + 5, m.minutes()[i][j], i + "->" + j);
+                    assertEquals(i + 1, m.km()[i][j], 1e-9, i + "->" + j);
+                }
+        requests.clear();
+        rs.matrix(pts.subList(0, 100), TransportMode.CAR);
+        assertEquals(1, requests.size(), "100 points still fit one request");
     }
 
     @Test

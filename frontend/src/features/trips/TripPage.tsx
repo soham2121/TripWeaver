@@ -194,6 +194,7 @@ export function TripPage() {
               }}
               onEdit={canEdit ? onEdit : undefined}
               busy={busy}
+              title={trip.title}
             />
           )}
           {trip.result && trip.kind === 'ROAD_TRIP' && (
@@ -208,7 +209,27 @@ export function TripPage() {
                   Re-plan with the saved stops
                 </button>
               )}
-              <RoadTripView trip={trip.result as RoadTrip} />
+              <RoadTripView
+                trip={trip.result as RoadTrip}
+                title={trip.title}
+                onPickReturn={
+                  canEdit
+                    ? (n) => {
+                        const res = trip.result as RoadTrip
+                        // Already planned: store the pick in the saved request and result, no re-plan.
+                        void act(
+                          () =>
+                            tripsApi.update(id, {
+                              version: trip.version,
+                              request: { ...(trip.request as object), returnChoice: n },
+                              result: { ...res, returnTrip: { ...res.returnTrip!, chosen: n } },
+                            }),
+                          saveTrip,
+                        )
+                      }
+                    : undefined
+                }
+              />
             </div>
           )}
         </div>

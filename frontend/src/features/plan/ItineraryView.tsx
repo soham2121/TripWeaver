@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { BudgetTable } from '../../components/BudgetTable'
 import { ConfidenceBadge } from '../../components/ConfidenceBadge'
+import { PrintButton } from '../../components/PrintSheet'
 import { ProviderNotice } from '../../components/ProblemNotice'
 import type { MapPoint } from '../../maps/PlaceMap'
 import type { Day, Itinerary, Stop, Workload } from '../../types/itinerary'
@@ -8,6 +9,8 @@ import type { Confidence } from '../../types/place'
 import { label } from '../../utils/format'
 import { Autocomplete } from '../discover/Autocomplete'
 import type { Edit } from './edits'
+import { dayEntries } from './dayEntries'
+import { ItineraryPrint } from './ItineraryPrint'
 
 const PlaceMap = lazy(() => import('../../maps/PlaceMap'))
 
@@ -26,11 +29,17 @@ export function ItineraryView({
   base,
   onEdit,
   busy = false,
+  title = `${it.days.length}-day trip`,
+  printable = true,
 }: {
   it: Itinerary
   base: { lat: number; lon: number }
   onEdit?: (e: Edit) => void
   busy?: boolean
+  /** Heading and PDF file name of the printable copy. */
+  title?: string
+  /** False inside another printable view (a road trip's stay): one print sheet per page. */
+  printable?: boolean
 }) {
   const [dayIdx, setDayIdx] = useState(0)
   const [mustQuery, setMustQuery] = useState('')
@@ -50,8 +59,12 @@ export function ItineraryView({
   const day = it.days[Math.min(dayIdx, it.days.length - 1)]
   return (
     <div className="space-y-3 text-sm">
+      {printable && <ItineraryPrint it={it} title={title} />}
       <div className="space-y-1 card p-3">
-        <ProviderNotice provider={it.travelProvider} basis={it.travelBasis} />
+        <div className="flex items-start justify-between gap-2">
+          <ProviderNotice provider={it.travelProvider} basis={it.travelBasis} />
+          {printable && <PrintButton />}
+        </div>
         <p className="text-zinc-500">{it.disclaimer}</p>
         {it.coverage.uncovered.length > 0 && (
           <p className="text-amber-700">
@@ -207,8 +220,6 @@ function WorkloadBar({ day, w }: { day: number; w: Workload }) {
   )
 }
 
-type Entry = { at: string; stop?: Stop; meal?: Day['meals'][number] }
-
 function DayView({
   day,
   days,
@@ -233,12 +244,7 @@ function DayView({
     ],
     [day, base],
   )
-  // Times before the day's start are after midnight on a day that ends late; sort them last.
-  const afterStart = (t: string) => (t < day.start ? '1' : '0') + t
-  const entries: Entry[] = [
-    ...day.stops.map((s) => ({ at: s.start, stop: s })),
-    ...day.meals.map((m) => ({ at: m.start, meal: m })),
-  ].sort((a, b) => afterStart(a.at).localeCompare(afterStart(b.at)))
+  const entries = dayEntries(day)
   const o = day.ordering
   return (
     <div className="grid gap-3 xl:grid-cols-2">

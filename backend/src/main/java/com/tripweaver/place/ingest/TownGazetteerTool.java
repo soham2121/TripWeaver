@@ -43,7 +43,7 @@ public final class TownGazetteerTool {
         System.out.printf("towns=%d in %.1fs%n", towns.size(), (System.nanoTime() - t0) / 1e9);
     }
 
-    static Town town(Map<String, String> tags, double lat, double lon) {
+    public static Town town(Map<String, String> tags, double lat, double lon) {
         String name = tags.getOrDefault("name:en", tags.get("name"));
         Set<String> aliases = new LinkedHashSet<>();
         for (String k : List.of("name", "name:en", "alt_name", "alt_name:en", "old_name", "old_name:en"))
