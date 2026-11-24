@@ -149,29 +149,27 @@ export function PlanPage() {
       return { ...f, weights: w }
     })
 
-  const input = 'block w-full rounded border border-zinc-300 px-1'
+  const input = 'field'
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)] [&>*]:min-w-0">
       <form
-        className="space-y-3 self-start rounded border border-zinc-200 bg-white p-3 text-sm"
+        className="space-y-3 self-start card p-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
           generate()
         }}
       >
-        <h1 className="text-base font-semibold">
-          {today ? 'Plan today' : 'Plan a multi-day trip'}
-        </h1>
+        <h1 className="text-xl font-bold">{today ? 'Plan today' : 'Plan a multi-day trip'}</h1>
         {initial.note && <p className="text-xs text-teal-800">{initial.note}</p>}
-        <ol className="flex gap-1 text-xs">
+        <ol className="flex flex-wrap gap-1 text-xs">
           {STEPS.map((s, i) => (
             <li key={s}>
               <button
                 type="button"
                 aria-current={i === step ? 'step' : undefined}
                 onClick={() => setStep(i)}
-                className={`rounded px-2 py-1 ${i === step ? 'bg-teal-700 text-white' : 'bg-zinc-100'}`}
+                className={`rounded-full px-2.5 py-1 font-medium ${i === step ? 'bg-teal-700 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
               >
                 {i + 1}. {s}
               </button>
@@ -366,20 +364,12 @@ export function PlanPage() {
 
         <div className="flex gap-2">
           {step > 0 && (
-            <button
-              type="button"
-              onClick={() => setStep(step - 1)}
-              className="rounded px-3 py-2 ring-1 ring-zinc-300"
-            >
+            <button type="button" onClick={() => setStep(step - 1)} className="btn-secondary">
               Back
             </button>
           )}
           {step < STEPS.length - 1 && (
-            <button
-              type="button"
-              onClick={() => setStep(step + 1)}
-              className="rounded px-3 py-2 ring-1 ring-zinc-300"
-            >
+            <button type="button" onClick={() => setStep(step + 1)} className="btn-secondary">
               Next
             </button>
           )}
@@ -387,7 +377,7 @@ export function PlanPage() {
         <button
           type="submit"
           disabled={loading || Object.keys(form.weights).length === 0}
-          className="w-full rounded bg-teal-700 px-3 py-2 font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary"
         >
           {loading ? 'Planning…' : 'Generate plan'}
         </button>
@@ -395,19 +385,35 @@ export function PlanPage() {
 
       <section aria-live="polite" aria-busy={loading}>
         {loading && (
-          <p role="status" className="mb-2 text-sm text-zinc-600">
+          <p role="status" className="mb-3 flex items-center gap-2 text-sm text-zinc-600">
+            <span aria-hidden className="size-2 animate-pulse rounded-full bg-teal-600" />
             Planning your days…
           </p>
         )}
+        {loading && !result && (
+          <div aria-hidden className="space-y-3">
+            <div className="skeleton h-24" />
+            <div className="grid gap-3 xl:grid-cols-2">
+              <div className="skeleton h-80" />
+              <div className="space-y-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton h-16" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         {problem && <ProblemNotice problem={problem} />}
         {!result && !problem && !loading && (
-          <p className="text-sm text-zinc-500">
+          <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500">
             Choose interests and generate a day-by-day plan. You can then lock, remove, replace or
             move stops and replan.
           </p>
         )}
         {result && lastRequest && (
-          <div className={`space-y-3 ${loading ? 'opacity-60' : ''}`}>
+          <div
+            className={`space-y-4 transition-opacity duration-200 ${loading ? 'opacity-60' : ''}`}
+          >
             <SaveTrip
               kind="ITINERARY"
               request={lastRequest}

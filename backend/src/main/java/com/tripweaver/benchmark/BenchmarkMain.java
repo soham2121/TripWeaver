@@ -27,9 +27,26 @@ public final class BenchmarkMain {
         for (String w : which) {
             List<BenchmarkHarness.Sample> samples = switch (w) {
                 case "trie" -> TrieBenchmark.run(new int[] {1_000, 10_000, 100_000, 1_000_000}, 1_000, 5, 15);
+                case "quickselect" ->
+                    AlgorithmBenchmarks.quickselect(new int[] {1_000, 10_000, 100_000, 1_000_000}, 5, 15);
+                case "setcover" ->
+                    AlgorithmBenchmarks.setCover(new int[] {20, 50, 100, 250, 500}, new int[] {20, 60}, 5, 15);
+                case "heap" -> AlgorithmBenchmarks.heap(new int[] {1_000, 10_000, 100_000, 500_000}, 100_000, 3, 10);
+                case "tsp" -> AlgorithmBenchmarks.tsp(new int[] {10, 12, 20, 50, 100, 200}, 5, 15);
                 default -> throw new IllegalArgumentException("unknown benchmark " + w);
             };
             Path csv = Path.of("../benchmark-results/raw/" + w + "-" + stamp + ".csv");
+            if (!AlgorithmBenchmarks.quality.isEmpty()) {
+                Path qcsv = Path.of("../benchmark-results/raw/" + w + "-quality-" + stamp + ".csv");
+                java.nio.file.Files.write(
+                        qcsv,
+                        java.util.stream.Stream.concat(
+                                        java.util.stream.Stream.of("algorithm,variant,size,seed,metric,value"),
+                                        AlgorithmBenchmarks.quality.stream())
+                                .toList());
+                System.out.println("quality " + w + " -> " + qcsv);
+                AlgorithmBenchmarks.quality.clear();
+            }
             BenchmarkHarness.writeCsv(csv, samples);
             Map<String, List<BenchmarkHarness.Sample>> groups = new LinkedHashMap<>();
             for (var s : samples)

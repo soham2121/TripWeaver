@@ -18,7 +18,7 @@ const STYLE: Record<Confidence, { label: string; cls: string; title: string }> =
   },
   USER_ENTERED: {
     label: 'You entered',
-    cls: 'bg-violet-100 text-violet-800',
+    cls: 'bg-clay-100 text-clay-800',
     title: 'Entered by you',
   },
   SYNTHETIC: { label: 'Synthetic', cls: 'bg-zinc-200 text-zinc-700', title: 'Generated test data' },
@@ -29,7 +29,7 @@ export function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
   const s = STYLE[confidence] ?? STYLE.UNKNOWN
   return (
     <span
-      className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${s.cls}`}
+      className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.cls}`}
       title={s.title}
     >
       {s.label}

@@ -1,12 +1,24 @@
 spring:
   application:
     name: tripweaver
+  # Optional .env file (repo root when run from backend/, or the working directory). Real environment
+  # variables win over it. Never commit .env.
+  config:
+    import: optional:file:../.env[.properties],optional:file:./.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5433/tripweaver}
-    username: ${DB_USER:tripweaver}
-    password: ${DB_PASSWORD:tripweaver}
+    # Supabase: set SPRING_DATASOURCE_URL/USERNAME/PASSWORD (Session Pooler, see .env.example).
+    # Unset = the local docker-compose PostGIS database.
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://127.0.0.1:5433/tripweaver}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:tripweaver}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:tripweaver}}
+    hikari:
+      # The Supabase Free Session Pooler allows few client connections; keep the pool small.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      connection-timeout: 15000
   flyway:
     enabled: true
+    # Portable migrations for every database, plus PostgreSQL-only ones (PostGIS, RLS) that H2 tests skip.
+    locations: classpath:db/migration,classpath:db/vendor/{vendor}
 
 server:
   port: ${PORT:8088}

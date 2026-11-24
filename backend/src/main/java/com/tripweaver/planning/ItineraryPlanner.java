@@ -61,7 +61,7 @@ public final class ItineraryPlanner {
 
     static final int MAX_DAYS = 14, MAX_PARTY = 20, MAX_REPAIR_REMOVALS = 3, REGION_HOP_PENALTY = 30;
     static final int LUNCH_FROM = 12 * 60 + 30, LUNCH_LATE = 14 * 60 + 30, DINNER_FROM = 19 * 60 + 30;
-    static final int MAX_FOOD_STOPS_PER_DAY = 2, MEAL_EARLY = 30, POOL_PER_DAY = 40, QUOTA_PER_DAY = 3;
+    static final int MAX_FOOD_STOPS_PER_DAY = 2, MEAL_EARLY = 30, MEAL_GRACE = 60, POOL_PER_DAY = 40, QUOTA_PER_DAY = 3;
     static final Set<String> FOOD_CATEGORIES = Set.of("restaurant", "cafe", "fast_food");
     static final Set<String> NIGHTLIFE_CATEGORIES = Set.of("bar", "nightclub");
     /** Assumed hours for bars and clubs with no sourced hours, labelled as an estimate. */
@@ -386,7 +386,10 @@ public final class ItineraryPlanner {
             Set<String> covers = new TreeSet<>(p.interests());
             covers.retainAll(req.interests().keySet());
             PlaceHours ph = hours.apply(p.id());
-            if (ph == null && NIGHTLIFE_CATEGORIES.contains(p.primaryCategory())) ph = NIGHTLIFE_ESTIMATE;
+            // Bars and clubs with no hours, or hours we cannot parse (e.g. "sunset till late"), get the labelled
+            // evening estimate instead of being treated as open all day. Place details still show the raw text.
+            if (NIGHTLIFE_CATEGORIES.contains(p.primaryCategory())
+                    && (ph == null || OpeningHours.parse(ph.raw()) == null)) ph = NIGHTLIFE_ESTIMATE;
             return new Visit(p, kind, value, covers, fixedStart, fixedMin, ph, cost(p), why);
         }
 
@@ -437,10 +440,21 @@ public final class ItineraryPlanner {
             for (int i = 0; i < order.size(); i++) {
                 Visit v = order.get(i);
                 boolean food = isFood(v.p);
-                // A food stop next may itself be the meal, so do not insert a separate break before it.
-                while (!food
-                        && !pendingMeals.isEmpty()
-                        && t >= (int) pendingMeals.getFirst()[1]) {
+                // Meal breaks. A break is due once its window opens, or up to MEAL_EARLY before when the next
+                // visit would otherwise run past the window. A food stop that will start inside the window is
+                // the meal itself. A break more than MEAL_GRACE past its window is dropped, never placed late
+                // (a late-opening restaurant once pushed lunch to 18:27); the day then warns.
+                while (!pendingMeals.isEmpty()) {
+                    Object[] m = pendingMeals.getFirst();
+                    int from = (int) m[1], late = (int) m[2];
+                    if (t > late + MEAL_GRACE) {
+                        pendingMeals.removeFirst();
+                        continue;
+                    }
+                    int next = projectedStart(v, t + matrix.minutes()[prev][v.idx], dow, pace);
+                    if (food && next >= from - MEAL_EARLY && next <= late) break;
+                    boolean due = t >= from || (t >= from - MEAL_EARLY && next + v.minutes(pace) > late);
+                    if (!due) break;
                     if (t + pace.mealMinutes() > d.end()) return Sim.fail("day time window");
                     String label = (String) pendingMeals.removeFirst()[0];
                     meals.add(new Itinerary.Meal(label, time(t), time(t + pace.mealMinutes()), null));
@@ -499,6 +513,16 @@ public final class ItineraryPlanner {
             if (t > d.end()) return Sim.fail("day time window");
             if (order.isEmpty()) t = d.start();
             return new Sim(null, out, meals, back, t, act, travel, meal, buf, wait, km, high, trans, load);
+        }
+
+        /** Start time a visit would get if reached at {@code arrive}: booking time, then opening hours. */
+        static int projectedStart(Visit v, int arrive, DayOfWeek dow, Pace pace) {
+            int s = v.fixedStart != null ? Math.max(arrive, v.fixedStart) : arrive;
+            if (v.oh != null) {
+                int e = v.oh.earliestStart(dow, s, v.minutes(pace));
+                if (e >= 0) s = e;
+            }
+            return s;
         }
 
         boolean withinPace(DayCtx d, Sim s) {

@@ -15,8 +15,14 @@ export interface MapPoint {
   order?: number
 }
 
-/** OpenFreeMap vector tiles (no API key). Attribution is rendered by MapLibre from the style. */
-export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty'
+/**
+ * MapLibre style URL. Default: OpenFreeMap vector tiles built from OSM (no API key; see
+ * docs/DATA_SOURCES.md). Set VITE_MAP_STYLE_URL to switch provider, e.g. a self-hosted style. Attribution comes
+ * from the style and is rendered by MapLibre.
+ */
+export const MAP_STYLE: string =
+  (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ||
+  'https://tiles.openfreemap.org/styles/liberty'
 
 interface Props {
   points: MapPoint[]
@@ -56,11 +62,20 @@ export default function PlaceMap({ points, selectedId, onSelect, line, className
     })
     m.on('load', () => {
       m.addSource('route', { type: 'geojson', data: emptyFc() })
+      // White casing under the route keeps it legible over busy tiles.
+      m.addLayer({
+        id: 'route-casing',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.9 },
+      })
       m.addLayer({
         id: 'route',
         type: 'line',
         source: 'route',
-        paint: { 'line-color': '#0f766e', 'line-width': 3, 'line-opacity': 0.8 },
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#403da7', 'line-width': 4, 'line-opacity': 0.9 },
       })
       m.addSource('pts', { type: 'geojson', data: emptyFc() })
       m.addLayer({
@@ -68,8 +83,8 @@ export default function PlaceMap({ points, selectedId, onSelect, line, className
         type: 'circle',
         source: 'pts',
         paint: {
-          'circle-radius': ['case', ['get', 'selected'], 9, 6],
-          'circle-color': ['case', ['get', 'selected'], '#b45309', '#0f766e'],
+          'circle-radius': ['case', ['get', 'selected'], 11, ['has', 'order'], 9, 6],
+          'circle-color': ['case', ['get', 'selected'], '#d06030', '#403da7'],
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
         },
@@ -79,7 +94,13 @@ export default function PlaceMap({ points, selectedId, onSelect, line, className
         type: 'symbol',
         source: 'pts',
         filter: ['has', 'order'],
-        layout: { 'text-field': ['to-string', ['get', 'order']], 'text-size': 11 },
+        layout: {
+          'text-field': ['to-string', ['get', 'order']],
+          'text-size': 11,
+          // One font the OpenFreeMap style serves (stacks are fetched as one combined name and 404).
+          'text-font': ['Noto Sans Bold'],
+          'text-allow-overlap': true,
+        },
         paint: { 'text-color': '#ffffff' },
       })
       m.on('click', 'pts', (e: maplibregl.MapLayerMouseEvent) => {

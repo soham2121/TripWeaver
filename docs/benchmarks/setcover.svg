@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 400" width="780" height="400" role="img" aria-label="Weighted Set Cover: lazy heap vs full greedy">
+<style>
+  .bg{fill:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.grid{stroke:#e4e3df}.axis{stroke:#b9b8b2}.ring{stroke:#fcfcfb}
+  .s0{stroke:#2a78d6}.f0{fill:#2a78d6}.s1{stroke:#eb6834}.f1{fill:#eb6834}.s2{stroke:#1baf7a}.f2{fill:#1baf7a}.s3{stroke:#eda100}.f3{fill:#eda100}
+  @media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.grid{stroke:#383835}.axis{stroke:#5d5c57}.ring{stroke:#1a1a19}
+  .s0{stroke:#3987e5}.f0{fill:#3987e5}.s1{stroke:#d95926}.f1{fill:#d95926}.s2{stroke:#199e70}.f2{fill:#199e70}.s3{stroke:#c98500}.f3{fill:#c98500}}
+  text{font:12px system-ui,-apple-system,"Segoe UI",sans-serif}.title{font-size:15px;font-weight:600}
+</style>
+<rect class="bg" width="780" height="400"/>
+<text class="t1 title" x="72" y="24">Weighted Set Cover: lazy heap vs full greedy</text>
+<line class="s0" x1="72" y1="44" x2="90" y2="44" stroke-width="2"/>
+<text class="t2" x="96" y="48">lazy-heap/U20</text>
+<line class="s1" x1="197" y1="44" x2="215" y2="44" stroke-width="2"/>
+<text class="t2" x="221" y="48">full-greedy/U20</text>
+<line class="s2" x1="336" y1="44" x2="354" y2="44" stroke-width="2"/>
+<text class="t2" x="360" y="48">lazy-heap/U60</text>
+<line class="s3" x1="461" y1="44" x2="479" y2="44" stroke-width="2"/>
+<text class="t2" x="485" y="48">full-greedy/U60</text>
+<line class="grid" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="64" y="352" text-anchor="end">10 µs</text>
+<line class="grid" x1="72" x2="550" y1="206" y2="206" stroke-width="1"/>
+<text class="t2" x="64" y="210" text-anchor="end">100 µs</text>
+<line class="grid" x1="72" x2="550" y1="64" y2="64" stroke-width="1"/>
+<text class="t2" x="64" y="68" text-anchor="end">1 ms</text>
+<text class="t2" x="72" y="366" text-anchor="middle">20</text>
+<text class="t2" x="208.068302620459" y="366" text-anchor="middle">50</text>
+<text class="t2" x="311" y="366" text-anchor="middle">100</text>
+<text class="t2" x="447.06830262045906" y="366" text-anchor="middle">250</text>
+<text class="t2" x="550" y="366" text-anchor="middle">500</text>
+<line class="axis" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="311" y="390" text-anchor="middle">Candidates N (log scale)</text>
+<text class="t2" transform="translate(16 206) rotate(-90)" text-anchor="middle">median time per operation (log scale)</text>
+<path class="s0" d="M72.0,175.6L208.1,151.4L311.0,119.0L447.1,122.0L550.0,95.9" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f0 ring" cx="72.0" cy="175.6" r="4" stroke-width="2"><title>lazy-heap/U20, N=20: 164 µs</title></circle>
+<circle class="f0 ring" cx="208.1" cy="151.4" r="4" stroke-width="2"><title>lazy-heap/U20, N=50: 243 µs</title></circle>
+<circle class="f0 ring" cx="311.0" cy="119.0" r="4" stroke-width="2"><title>lazy-heap/U20, N=100: 410 µs</title></circle>
+<circle class="f0 ring" cx="447.1" cy="122.0" r="4" stroke-width="2"><title>lazy-heap/U20, N=250: 391 µs</title></circle>
+<circle class="f0 ring" cx="550.0" cy="95.9" r="4" stroke-width="2"><title>lazy-heap/U20, N=500: 596 µs</title></circle>
+<path class="s1" d="M72.0,189.5L208.1,181.2L311.0,165.3L447.1,146.2L550.0,132.9" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f1 ring" cx="72.0" cy="189.5" r="4" stroke-width="2"><title>full-greedy/U20, N=20: 131 µs</title></circle>
+<circle class="f1 ring" cx="208.1" cy="181.2" r="4" stroke-width="2"><title>full-greedy/U20, N=50: 150 µs</title></circle>
+<circle class="f1 ring" cx="311.0" cy="165.3" r="4" stroke-width="2"><title>full-greedy/U20, N=100: 194 µs</title></circle>
+<circle class="f1 ring" cx="447.1" cy="146.2" r="4" stroke-width="2"><title>full-greedy/U20, N=250: 264 µs</title></circle>
+<circle class="f1 ring" cx="550.0" cy="132.9" r="4" stroke-width="2"><title>full-greedy/U20, N=500: 327 µs</title></circle>
+<path class="s2" d="M72.0,255.1L208.1,250.8L311.0,214.1L447.1,160.5L550.0,115.2" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2 ring" cx="72.0" cy="255.1" r="4" stroke-width="2"><title>lazy-heap/U60, N=20: 45.1 µs</title></circle>
+<circle class="f2 ring" cx="208.1" cy="250.8" r="4" stroke-width="2"><title>lazy-heap/U60, N=50: 48.4 µs</title></circle>
+<circle class="f2 ring" cx="311.0" cy="214.1" r="4" stroke-width="2"><title>lazy-heap/U60, N=100: 87.7 µs</title></circle>
+<circle class="f2 ring" cx="447.1" cy="160.5" r="4" stroke-width="2"><title>lazy-heap/U60, N=250: 209 µs</title></circle>
+<circle class="f2 ring" cx="550.0" cy="115.2" r="4" stroke-width="2"><title>lazy-heap/U60, N=500: 436 µs</title></circle>
+<path class="s3" d="M72.0,289.8L208.1,254.4L311.0,215.4L447.1,133.8L550.0,99.3" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f3 ring" cx="72.0" cy="289.8" r="4" stroke-width="2"><title>full-greedy/U60, N=20: 25.7 µs</title></circle>
+<circle class="f3 ring" cx="208.1" cy="254.4" r="4" stroke-width="2"><title>full-greedy/U60, N=50: 45.6 µs</title></circle>
+<circle class="f3 ring" cx="311.0" cy="215.4" r="4" stroke-width="2"><title>full-greedy/U60, N=100: 85.9 µs</title></circle>
+<circle class="f3 ring" cx="447.1" cy="133.8" r="4" stroke-width="2"><title>full-greedy/U60, N=250: 323 µs</title></circle>
+<circle class="f3 ring" cx="550.0" cy="99.3" r="4" stroke-width="2"><title>full-greedy/U60, N=500: 564 µs</title></circle>
+<text class="t1" x="560" y="99.92537926968026">lazy-heap/U20 596 µs</text>
+<text class="t1" x="560" y="113.92537926968026">full-greedy/U60 564 µs</text>
+<text class="t1" x="560" y="127.92537926968026">lazy-heap/U60 436 µs</text>
+<text class="t1" x="560" y="141.92537926968026">full-greedy/U20 327 µs</text>
+</svg>

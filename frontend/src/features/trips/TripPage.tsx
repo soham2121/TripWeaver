@@ -27,8 +27,8 @@ const ROLE_TEXT: Record<Role, string> = {
 const POLL_MS = 15_000
 const inr = (n: number) => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 const when = localTime
-const box = 'rounded border border-zinc-200 bg-white p-3 text-sm'
-const btn = 'rounded px-2 py-1 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100 disabled:opacity-50'
+const box = 'card p-3 text-sm'
+const btn = 'btn-sm'
 
 type Notice = { kind: 'error' | 'info'; text: string } | null
 
@@ -217,7 +217,7 @@ export function TripPage() {
           <People trip={trip} busy={busy} act={act} reload={load} />
           {owner && (
             <section aria-label="Share" className={box}>
-              <h2 className="font-medium">Read-only link</h2>
+              <h2 className="text-base font-semibold">Read-only link</h2>
               <p className="text-xs text-zinc-500">
                 Anyone with the link can view the plan without signing in. Revoke it any time.
               </p>
@@ -279,7 +279,7 @@ export function TripPage() {
             <ExpensesPanel id={id} canEdit={canEdit} data={expenses} busy={busy} act={act} />
           )}
           <section aria-label="History" className={box}>
-            <h2 className="font-medium">Changes</h2>
+            <h2 className="text-base font-semibold">Changes</h2>
             <ol className="mt-1 space-y-0.5 text-xs text-zinc-600">
               {history.map((h, i) => (
                 <li key={i}>
@@ -314,7 +314,7 @@ function TitleBar({
   const owner = trip.role === 'OWNER'
   return (
     <div className={box}>
-      <h1 className="text-lg font-semibold">{trip.title}</h1>
+      <h1 className="text-2xl font-bold">{trip.title}</h1>
       <p className="text-xs text-zinc-600">
         {ROLE_TEXT[trip.role]} · owner {trip.owner.username} · version {trip.version} · updated{' '}
         {when(trip.updatedAt)}
@@ -327,7 +327,7 @@ function TitleBar({
               value={title}
               maxLength={120}
               onChange={(e) => setTitle(e.target.value)}
-              className="block rounded border border-zinc-300 px-1"
+              className="field w-auto"
             />
           </label>
           <button
@@ -376,7 +376,7 @@ function People({
   const owner = trip.role === 'OWNER'
   return (
     <section aria-label="People" className={box}>
-      <h2 className="font-medium">People</h2>
+      <h2 className="text-base font-semibold">People</h2>
       <ul className="mt-1 space-y-1">
         <li>
           {trip.owner.username} <span className="text-xs text-zinc-500">owner</span>
@@ -446,7 +446,7 @@ function People({
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="block w-full rounded border border-zinc-300 px-1"
+              className="field"
             />
           </label>
           <select
@@ -514,7 +514,7 @@ function Suggestions({
   const canEdit = trip.role !== 'VIEWER'
   return (
     <section aria-label="Suggestions" className={box}>
-      <h2 className="font-medium">Suggested places</h2>
+      <h2 className="text-base font-semibold">Suggested places</h2>
       {items.length === 0 && <p className="text-xs text-zinc-500">No suggestions yet.</p>}
       <ul className="mt-1 space-y-2">
         {items.map((s) => (
@@ -607,7 +607,7 @@ function Suggestions({
               value={note}
               maxLength={500}
               onChange={(e) => setNote(e.target.value)}
-              className="block w-full rounded border border-zinc-300 px-1"
+              className="field"
             />
           </label>
           <button type="submit" className={btn} disabled={busy || !place}>
@@ -636,7 +636,7 @@ function ExpensesPanel({
   const [amount, setAmount] = useState('')
   return (
     <section aria-label="Expenses" className={box}>
-      <h2 className="font-medium">Shared expenses</h2>
+      <h2 className="text-base font-semibold">Shared expenses</h2>
       <ul className="mt-1 text-xs text-zinc-700">
         {data.items.map((e) => (
           <li key={e.id}>
@@ -683,7 +683,7 @@ function ExpensesPanel({
               value={description}
               maxLength={200}
               onChange={(e) => setDescription(e.target.value)}
-              className="block w-full rounded border border-zinc-300 px-1"
+              className="field"
             />
           </label>
           <label className="w-24 text-xs">
@@ -693,7 +693,7 @@ function ExpensesPanel({
               min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="block w-full rounded border border-zinc-300 px-1"
+              className="field"
             />
           </label>
           <button

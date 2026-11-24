@@ -28,3 +28,6 @@ Thumbs.db
 .superpowers/
 benchmark-results/tmp/
 data/osrm/
+
+# Supabase CLI local state
+supabase/.temp/

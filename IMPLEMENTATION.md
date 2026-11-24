@@ -2,7 +2,7 @@
 
 > **Product:** Personalised trip planning, itinerary optimisation and collaborative travel
 > **CIA:** Advanced Algorithm, Semester V, 2026–27
-> **Stack:** Java 25 + Spring Boot, React + TypeScript, PostgreSQL
+> **Stack:** Java 21 (builds and runs on JDK 21 or newer) + Spring Boot, React + TypeScript, PostgreSQL
 > **Initial destination:** Goa, with an extensible India-wide data model
 > **Purpose:** Authoritative implementation specification for Claude Code
 
@@ -22,7 +22,7 @@ Build a working product whose central workflow is:
 4. External services may provide source data, maps, road distances, route geometry, weather or place enrichment. TripWeaver must perform its own candidate selection, experience coverage, day allocation and stop ordering.
 5. Do not invent place names, ratings, review text, opening hours, ticket prices, costs or route times.
 6. Label data as verified, provider-sourced, curated estimate, user-entered, synthetic/demo or unknown.
-7. Respect OpenStreetMap and Google Places licensing, attribution, storage, caching and display policies. Never scrape Google Maps.
+7. Respect OpenStreetMap licensing and attribution (ODbL). **Google Places API is out of scope (D39):** no Google Cloud project, billing, API key, SDK, HTTP client or API call, and no Google ratings, reviews, photos or other Places content. Never scrape Google Maps or Google search. Plain Google Maps directions URLs for navigation handoff are allowed; they call no API.
 8. Never expose API keys in frontend code, source control, logs or error responses.
 9. Do not claim global optimality for heuristic or approximation algorithms.
 10. Write tests before integrating each algorithm. Run relevant tests after every meaningful change.
@@ -145,14 +145,14 @@ A routing provider may return road legs or geometry; it must not decide TripWeav
 
 ## 2.3 CIA compliance checklist
 
-- [ ] Team has 2–3 students.
+- [x] Team has 2–3 students. Exception: solo project with the teacher's permission (D45).
 - [ ] Backend is Java; frontend calls its APIs.
 - [ ] Five proposed core algorithms are implemented in Java.
 - [ ] At least two distinct techniques are syllabus-approved.
 - [ ] Unit 4–6 technique included.
 - [ ] Randomized Quickselect genuinely demonstrates CO5.
 - [ ] At least five documented correctness tests per core algorithm; target 8–12.
-- [ ] At least three increasing benchmark sizes per core algorithm.
+- [x] At least three increasing benchmark sizes per core algorithm.
 - [ ] Baseline comparisons documented; target a comparison for each core algorithm.
 - [ ] Time/space complexity matches actual code.
 - [ ] Real/synthetic data provenance and failure cases documented.
@@ -254,24 +254,11 @@ References:
 
 Follow ODbL obligations, visible attribution and relevant share-alike requirements. Keep OSM-derived records distinguishable from independently curated fields.
 
-### B. Google Places API — optional, on-demand enrichment
+### B. Google Places API — out of scope (decision D39, 2026-11-24)
 
-Use the official API, never scrape Google Maps. Potential details include rating, rating count, price level/range where available, opening hours, a limited number of reviews, review summaries and photos where supported.
+TripWeaver does not use the Google Places API. No Google Cloud project, billing account or API key is required, and none may be added. No Google SDK, HTTP client or API call; no feature flag or dormant integration. Google ratings, reviews, photos and other Places content are never fetched, shown or stored. Google Maps and Google search are never scraped.
 
-Rules:
-- Backend-only API key and field masks.
-- Request details only when a user opens a place or an explicit detail refresh occurs.
-- Respect Google storage/caching rules. Place IDs may be stored as permitted; do not bulk persist restricted reviews/place content.
-- Display required review-author attribution and provider branding.
-- Follow current map-display rules; do not place Google-derived content on an OSM map unless the current terms explicitly permit that exact use.
-- Keep a provider-off mode.
-- Set quotas and budget alerts.
-- Do not use Google reviews as the core algorithm's training/ranking dataset.
-- Never make TripWeaver dependent on Google credentials.
-
-References:
-- https://developers.google.com/maps/documentation/places/web-service/overview
-- https://developers.google.com/maps/documentation/places/web-service/policies
+Fields that Google would have supplied (opening hours, prices, descriptions) come from OSM tags where present and from independently curated official sources (C below); everything else stays visibly unknown. Navigation handoff uses ordinary Google Maps directions URLs (Section 7, Phase 7), which need no key and return nothing to TripWeaver.
 
 ### C. Official sources and curated records
 
@@ -298,7 +285,6 @@ Weather is optional enrichment for early releases. Open-Meteo or another permitt
 Suggested fields:
 - `id` internal UUID.
 - `osmId` nullable OSM element identifier.
-- `googlePlaceId` nullable, used only as permitted.
 - `name`, `description`, `latitude`, `longitude`.
 - `destinationId`, `regionId`, `neighbourhood`.
 - `primaryCategory`, `categories[]`, `interestTags[]`.
@@ -310,7 +296,7 @@ Suggested fields:
 - `accessibilityTags[]`.
 - `dataQualityStatus`, `isActive`, timestamps.
 
-Do not permanently store Google review text, ratings, photos or price information unless the current policy explicitly permits the specific storage/use. Keep restricted enrichment transient and policy-compliant.
+No Google Places content is fetched or stored (D39).
 
 ## 4.3 Ingestion pipeline
 
@@ -594,9 +580,9 @@ Enhanced:
 | Styling | Tailwind CSS |
 | Map | MapLibre GL JS |
 | Charts | Recharts or similar |
-| Backend | Java 25 + Spring Boot |
+| Backend | Java 21 + Spring Boot (JDK 21 or newer) |
 | Algorithms | Custom plain Java implementations |
-| Database | PostgreSQL |
+| Database | PostgreSQL + PostGIS (Supabase hosted, or local docker-compose) |
 | Persistence | Spring Data JPA or JDBC |
 | Validation | Jakarta Validation |
 | Backend tests | JUnit 5 |
@@ -724,7 +710,6 @@ Use `/api/v1`. Keep request/response DTOs separate from persistence entities.
 - `GET /api/v1/places/search?q=&destination=&category=`
 - `GET /api/v1/places/{placeId}`
 - `GET /api/v1/places/nearby?lat=&lon=&radiusKm=&categories=`
-- `GET /api/v1/places/{placeId}/enrichment` — optional provider details fetched on demand.
 - `GET /api/v1/destinations`
 - `GET /api/v1/destinations/{destinationId}/coverage`
 
@@ -812,7 +797,6 @@ Use appropriate HTTP statuses: 400 invalid request; 401 unauthenticated; 403 ins
 - Relevance explanation.
 - Data source/confidence badge.
 - Price range and cost basis.
-- Optional, attributed Google review panel.
 
 ## 11.4 Itinerary builder
 
@@ -905,7 +889,7 @@ Suggested logical tables:
 - `benchmark_runs`
 - `benchmark_samples`
 
-Use primary/foreign keys, uniqueness constraints and indexes for common queries. Avoid persisting restricted Google Places content.
+Use primary/foreign keys, uniqueness constraints and indexes for common queries. Store no Google Places content.
 
 ---
 
@@ -1065,10 +1049,10 @@ Baseline: nearest neighbour, original input order and exact brute force on small
 - Store minimal personal data.
 - Do not expose precise user location unless the user supplied it for the planning task.
 - Provide trip deletion.
-- Do not scrape or bulk-store restricted Google content.
+- Do not call the Google Places API, scrape Google Maps or store any Google content.
 - Document OSM attribution and ODbL obligations.
 - Document provider terms, quotas and pricing.
-- Make local demo work without Google API credentials.
+- The application needs no Google API credentials at all.
 - Use provider timeouts and fallback states.
 - Do not disclose stack traces or secrets in API errors.
 
@@ -1114,7 +1098,7 @@ Goal: understand the current repository and finalise architectural assumptions.
 - [ ] Create `docs/OPEN_QUESTIONS.md`.
 - [ ] Create `docs/DECISIONS.md`.
 - [ ] Create `docs/CIA_COMPLIANCE.md`.
-- [ ] Confirm Java 25 and Maven.
+- [ ] Confirm Java 21+ and Maven.
 - [ ] Confirm Node.js and package manager.
 - [ ] Record the five algorithm contracts.
 - [ ] Record data providers and licensing risks.
@@ -1333,43 +1317,41 @@ Goal: let travel companions view and contribute.
 
 **Acceptance gate:** Shared read-only link works; revoked link fails; viewers cannot edit; editors have limited permissions; owner can revoke access; stale edits return conflict.
 
-## Phase 11 — Optional external enrichment
+## Phase 11 — No-Google-dependency verification
 
-Goal: improve place details without dependency on paid data.
+Goal: prove that TripWeaver works with no Google API and no Google credentials. (This phase replaced "Optional external enrichment" on 2026-11-24, decision D39.)
 
-- [ ] Add provider abstraction.
-- [ ] Add backend-only Google Places feature flag.
-- [ ] Add field masks.
-- [ ] Add quota and budget controls.
-- [ ] Add required attribution/author details.
-- [ ] Follow latest caching/storage rules.
-- [ ] Keep restricted content out of permanent catalogue.
-- [ ] Implement provider-off mode.
-- [ ] Show unavailable fields honestly.
-- [ ] Test quota, timeout, no result and provider error.
-- [ ] Document setup with no committed API key.
+- [x] Application starts and plans with no Google API key or Google configuration present.
+- [x] No Google Places API (or other Google API) requests in backend or frontend code; automated source check.
+- [x] No Google SDK or client dependency in `pom.xml` or `package.json`.
+- [x] All place discovery uses the TripWeaver catalogue.
+- [x] Map renders with the configured OSM-compatible tile style (`VITE_MAP_STYLE_URL`, default OpenFreeMap) and shows OSM attribution.
+- [x] Routing uses the self-hosted OSRM provider, or reports clearly that road routing is unavailable and labels the fallback estimate.
+- [x] Google Maps navigation URLs are built without credentials and split at the waypoint limit.
+- [x] No restricted Google Places content stored (database check).
+- [x] Core planning works with every external service off.
 
-**Acceptance gate:** Core app works without Google; optional data is correctly attributed and policy-compliant; no scraping/bulk storage; quota controls are active.
+**Acceptance gate:** every item above verified by tests or recorded runs; no Google API traffic; core workflow complete without Google.
 
 ## Phase 12 — Benchmarks, audit and performance
 
 Goal: produce defensible academic evidence.
 
-- [ ] Trie vs linear scan benchmarks.
-- [ ] Quickselect vs sorting.
-- [ ] Set Cover vs baselines/exact small-instance reference.
-- [ ] Heap/lazy greedy vs full priority recomputation.
-- [ ] TSP vs nearest neighbour/exact small-instance optimum.
-- [ ] At least three increasing sizes per algorithm.
-- [ ] Multiple repetitions and JVM warm-up.
-- [ ] Save raw results.
-- [ ] Generate charts from raw results.
-- [ ] Document environment and methodology.
-- [ ] Verify theoretical complexity against code.
-- [ ] Run complete backend/frontend test suites.
+- [x] Trie vs linear scan benchmarks.
+- [x] Quickselect vs sorting.
+- [x] Set Cover vs baselines/exact small-instance reference.
+- [x] Heap/lazy greedy vs full priority recomputation.
+- [x] TSP vs nearest neighbour/exact small-instance optimum.
+- [x] At least three increasing sizes per algorithm.
+- [x] Multiple repetitions and JVM warm-up.
+- [x] Save raw results.
+- [x] Generate charts from raw results.
+- [x] Document environment and methodology.
+- [x] Verify theoretical complexity against code.
+- [x] Run complete backend/frontend test suites.
 - [ ] Review data licensing/provider policies.
 - [ ] Fix critical defects.
-- [ ] Confirm no fabricated results or unrun-test claims.
+- [x] Confirm no fabricated results or unrun-test claims.
 
 **Acceptance gate:** All core algorithms have tests and reproducible scaled benchmarks; baselines are fair; complexity notes match code; critical tests pass.
 
@@ -1425,15 +1407,15 @@ Goal: clean final submission package.
 - [x] OSM attribution/licensing documented.
 - [x] Curated fields have provenance.
 - [x] Costs have basis/confidence.
-- [ ] Google Places is optional and policy-compliant if enabled.
+- [x] No Google API dependency anywhere; verified in Phase 11.
 - [x] Provider outages do not break core planning.
 - [x] Raw data is not committed without permission.
 
 ## CIA evidence
 - [x] At least five correctness tests per core algorithm; target 8–12.
 - [ ] At least three increasing benchmark sizes per core algorithm.
-- [ ] Baseline comparison per core algorithm.
-- [ ] Actual benchmark outputs saved.
+- [x] Baseline comparison per core algorithm.
+- [x] Actual benchmark outputs saved.
 - [x] Edge/failure cases demonstrated.
 - [ ] README and reproducible setup complete.
 - [ ] Proposal and technical report complete.
@@ -1503,7 +1485,7 @@ Questions:
 # 20. Decisions Claude Code must not change casually
 
 1. Java owns all assessed algorithms.
-2. The place catalogue is independent of Google; Google enrichment is optional.
+2. The place catalogue is TripWeaver's own (OSM + curated). Google Places API is out of scope; Google Maps appears only as plain navigation links.
 3. No scraping or prohibited bulk storage.
 4. The combined multi-day planner is heuristic; no global-optimality claim.
 5. TSP approximation assumptions must be validated.
@@ -1524,8 +1506,7 @@ Questions:
 - OSM copyright/licence: https://www.openstreetmap.org/copyright
 - Geofabrik India extracts: https://download.geofabrik.de/asia/india.html
 - Overpass API: https://wiki.openstreetmap.org/wiki/Overpass_API
-- Google Places API: https://developers.google.com/maps/documentation/places/web-service/overview
-- Google Places policies: https://developers.google.com/maps/documentation/places/web-service/policies
+- Google Maps URLs (navigation handoff, no key): https://developers.google.com/maps/documentation/urls/get-started
 - OSRM: https://project-osrm.org/
 - MapLibre GL JS: https://maplibre.org/maplibre-gl-js/docs/
 - Spring Boot: https://spring.io/projects/spring-boot

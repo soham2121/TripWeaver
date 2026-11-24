@@ -77,7 +77,7 @@ export function Autocomplete({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-label={aria}
-        className="w-full rounded border border-zinc-300 px-3 py-2"
+        className="field px-3 py-2"
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
@@ -100,7 +100,7 @@ export function Autocomplete({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-80 w-full overflow-auto rounded border border-zinc-200 bg-white shadow"
+          className="absolute z-20 mt-1 max-h-80 w-full overflow-auto card shadow"
         >
           {items.map((s, i) => (
             <li

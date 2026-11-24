@@ -23,7 +23,7 @@ TripWeaver travel regions. A place belongs to the region with the nearest anchor
 |---|---|
 | id | UUID from `osm:<type>/<id>`. Stable across re-imports |
 | osm_type, osm_id | OSM element (node / way / relation). Unique |
-| google_place_id | Reserved for optional enrichment (Phase 11) |
+| geog | PostgreSQL only (V6): `geography(Point,4326)` generated from longitude/latitude, GiST index `ix_places_geog`. Used by `/places/nearby` |
 | name, description | OSM `name`, `description` |
 | latitude, longitude | Node position or mean of member nodes for ways and relations |
 | neighbourhood | Nearest OSM settlement within 3 km, else null |
@@ -67,6 +67,21 @@ Only sourced hours, in OSM `opening_hours` syntax, with confidence, source and v
 
 ### place_import_batches
 One row per import: source file, OSM timestamp, accepted/rejected/merged counts, full report JSON.
+
+### external_place_references (V5, dropped in V7)
+Created for the Google integration that was removed (D39); dropped by V7 (D46).
+
+### Constraints and security (V5, V6)
+- Confidence columns accept only VERIFIED, PROVIDER_SOURCED, CURATED_ESTIMATE, USER_ENTERED, SYNTHETIC and UNKNOWN.
+- Further checks: latitude and longitude ranges, `visit_minutes_min <= max`, `0 <= amount_min <= amount_max`, a 3-letter currency, and OSM type node, way or relation.
+- PostgreSQL: RLS is enabled on every table with no policies, and Supabase `anon`/`authenticated` have no grants. The backend connects as the owner and enforces access itself. New tables must enable RLS too; `scripts/verify-db.sql` checks this.
+
+### Curated import format (`data/curated/<slug>-curated.json`)
+- `records[]` are keyed by `osmRef`, with `name` for checking.
+- Each record can have `openingHours {raw, confidence, sourceUrl, note}`, `costs[] {kind, min, max, currency, basis, confidence, sourceUrl, note}`, `seasonal {text, closedMonths, sourceUrl}`, a description and accessibility tags.
+- The file-level `verifiedAt` applies to each record unless the record overrides it.
+- Only facts the cited source states are recorded; anything absent stays unknown.
+- Test fixtures in `src/test` are synthetic and never imported.
 
 ## Users, trips and collaboration (Flyway `V4__trips_and_collaboration.sql`)
 

@@ -201,7 +201,7 @@ export function RoadTripPage() {
       return { ...f, weights: w }
     })
 
-  const input = 'block w-full rounded border border-zinc-300 px-1'
+  const input = 'field'
   const money = (k: keyof Form, text: string) => (
     <label>
       {text}
@@ -216,15 +216,15 @@ export function RoadTripPage() {
   )
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)] [&>*]:min-w-0">
       <form
-        className="space-y-3 self-start rounded border border-zinc-200 bg-white p-3 text-sm"
+        className="space-y-3 self-start card p-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
           void plan()
         }}
       >
-        <h1 className="text-base font-semibold">Plan a road trip</h1>
+        <h1 className="text-xl font-bold">Plan a road trip</h1>
         {demoId && DEMOS[demoId] && (
           <p className="text-xs text-teal-800">Demo: Mumbai to Goa drive</p>
         )}
@@ -271,7 +271,7 @@ export function RoadTripPage() {
                     onChange={(e) =>
                       setStop(i, { stayMinutes: Number(e.target.value) || undefined })
                     }
-                    className="w-16 rounded border border-zinc-300 px-1"
+                    className="field w-16 px-1.5"
                   />
                 </label>
               </li>
@@ -424,30 +424,39 @@ export function RoadTripPage() {
           <p className="col-span-2 text-xs text-zinc-500">Blank costs stay unknown, never ₹0.</p>
         </fieldset>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-teal-700 px-3 py-2 font-medium text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="w-full btn-primary">
           {loading ? 'Planning…' : 'Plan road trip'}
         </button>
       </form>
 
       <section aria-live="polite" aria-busy={loading}>
         {loading && (
-          <p role="status" className="mb-2 text-sm text-zinc-600">
+          <p role="status" className="mb-3 flex items-center gap-2 text-sm text-zinc-600">
+            <span aria-hidden className="size-2 animate-pulse rounded-full bg-teal-600" />
             Routing and splitting the drive into days…
           </p>
         )}
+        {loading && !result && (
+          <div aria-hidden className="space-y-3">
+            <div className="skeleton h-28" />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="skeleton h-72" />
+              <div className="skeleton h-72" />
+            </div>
+            <div className="skeleton h-40" />
+          </div>
+        )}
         {problem && <ProblemNotice problem={problem} />}
         {!result && !problem && !loading && (
-          <p className="text-sm text-zinc-500">
+          <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500">
             Set your start, stops and destination. Stops stay in your order; detours are optional
             and limited.
           </p>
         )}
         {result && lastRequest && (
-          <div className="space-y-3">
+          <div
+            className={`space-y-4 transition-opacity duration-200 ${loading ? 'opacity-60' : ''}`}
+          >
             <SaveTrip
               kind="ROAD_TRIP"
               request={lastRequest}
@@ -507,7 +516,7 @@ export function RoadTripView({
 
   return (
     <div className="space-y-3 text-sm">
-      <div className="space-y-1 rounded border border-zinc-200 bg-white p-3">
+      <div className="space-y-1 card p-3">
         <p className="font-medium">
           {dt(trip.departure)} → {dt(trip.arrival)} · {hours(trip.totalDrivingMinutes)} driving ·{' '}
           {Math.round(trip.totalKm)} km · {trip.nights} night(s)
@@ -527,8 +536,8 @@ export function RoadTripView({
         <Suspense fallback={<div className="h-80 rounded bg-zinc-100" />}>
           <PlaceMap points={points} line={line} className="h-80" />
         </Suspense>
-        <section className="rounded border border-zinc-200 bg-white p-3">
-          <h2 className="mb-1 font-medium">Segments and detours</h2>
+        <section className="card p-3">
+          <h2 className="mb-2 text-base font-semibold">Segments and detours</h2>
           <p className="mb-1 text-xs text-zinc-500">
             {trip.detourCandidates} places near the route were considered.
           </p>
@@ -553,8 +562,8 @@ export function RoadTripView({
       </div>
 
       {!!trip.stayOptions?.length && (
-        <section className="rounded border border-zinc-200 bg-white p-3">
-          <h2 className="mb-1 font-medium">Where to stay on the way</h2>
+        <section className="card p-3">
+          <h2 className="mb-2 text-base font-semibold">Where to stay on the way</h2>
           <p className="mb-2 text-xs text-zinc-500">
             Towns with places to stay, ranked by closeness to an even split of the drive, the extra
             driving to reach them, and how much there is to do. Places to stay are OpenStreetMap
@@ -585,7 +594,7 @@ export function RoadTripView({
                         <button
                           type="button"
                           onClick={() => onPickStay(n.night, o.key)}
-                          className="ml-2 rounded px-2 py-0.5 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100"
+                          className="btn-sm ml-2"
                         >
                           Stay here
                         </button>
@@ -603,12 +612,19 @@ export function RoadTripView({
         <DayCard key={d.day} day={d} />
       ))}
 
-      <section className="rounded border border-zinc-200 bg-white p-3">
-        <h2 className="mb-2 font-medium">Budget</h2>
+      <section className="card p-3">
+        <h2 className="mb-3 text-base font-semibold">Budget</h2>
         <BudgetTable budget={trip.budget} />
       </section>
     </div>
   )
+}
+
+/** Rail node colour: stays in clay, breaks muted, meals amber, places in brand indigo. */
+const NODE: Partial<Record<RoadTripItem['type'], string>> = {
+  OVERNIGHT: 'bg-clay-500',
+  REST: 'bg-zinc-400',
+  MEAL: 'bg-amber-400',
 }
 
 const ITEM_TEXT: Record<RoadTripItem['type'], (i: RoadTripItem) => string> = {
@@ -625,15 +641,31 @@ const ITEM_TEXT: Record<RoadTripItem['type'], (i: RoadTripItem) => string> = {
 function DayCard({ day }: { day: RoadTripDay }) {
   const o = day.overnight
   return (
-    <section className="rounded border border-zinc-200 bg-white p-3">
-      <h2 className="font-medium">
+    <section className="card p-3">
+      <h2 className="text-base font-semibold">
         Day {day.day} · {day.date} · {hours(day.drivingMinutes)} driving, {Math.round(day.km)} km ·
         longest stretch {day.longestContinuousDrivingMinutes} min
       </h2>
-      <ol aria-label={`Day ${day.day} timeline`} className="mt-1 space-y-0.5">
+      {/* Route rail: drives are legs on the line, everything else is a stop on it. */}
+      <ol
+        aria-label={`Day ${day.day} timeline`}
+        className="reveal relative mt-3 space-y-1.5 before:absolute before:top-2 before:bottom-2 before:left-[5px] before:w-0.5 before:rounded-full before:bg-teal-100"
+      >
         {day.items.map((i, k) => (
-          <li key={k} className={i.type === 'DRIVE' ? 'text-xs text-zinc-500' : ''}>
-            <span className="mr-2 font-mono text-xs">{i.start.slice(11, 16)}</span>
+          <li
+            key={k}
+            style={{ '--i': k } as React.CSSProperties}
+            className={`relative pl-6 ${i.type === 'DRIVE' ? 'text-xs text-zinc-500' : 'text-sm'}`}
+          >
+            {i.type !== 'DRIVE' && (
+              <span
+                aria-hidden
+                className={`absolute top-1.5 left-0 size-3 rounded-full ring-4 ring-white ${NODE[i.type] ?? 'bg-teal-700'}`}
+              />
+            )}
+            <span className="tabular mr-2 text-xs font-medium text-zinc-500">
+              {i.start.slice(11, 16)}
+            </span>
             {ITEM_TEXT[i.type](i)}
             {i.note && <span className="text-xs text-zinc-500"> · {i.note}</span>}
           </li>

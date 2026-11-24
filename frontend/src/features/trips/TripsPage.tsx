@@ -31,7 +31,7 @@ export function TripsPage() {
     )
   return (
     <div className="space-y-2 text-sm">
-      <h1 className="text-base font-semibold">My trips</h1>
+      <h1 className="text-xl font-bold">My trips</h1>
       {error && <p role="alert">Could not load your trips.</p>}
       {trips?.length === 0 && (
         <p className="text-zinc-500">
@@ -45,10 +45,7 @@ export function TripsPage() {
       <ul className="space-y-1">
         {trips?.map((t) => (
           <li key={t.id}>
-            <Link
-              to={`/trips/${t.id}`}
-              className="block rounded border border-zinc-200 bg-white p-2 hover:border-teal-600"
-            >
+            <Link to={`/trips/${t.id}`} className="block card p-2 hover:border-teal-600">
               <span className="font-medium">{t.title}</span>{' '}
               <span className="text-xs text-zinc-500">
                 {t.kind === 'ROAD_TRIP' ? 'road trip' : 'itinerary'} · {t.role.toLowerCase()} ·

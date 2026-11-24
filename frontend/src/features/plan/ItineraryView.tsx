@@ -50,7 +50,7 @@ export function ItineraryView({
   const day = it.days[Math.min(dayIdx, it.days.length - 1)]
   return (
     <div className="space-y-3 text-sm">
-      <div className="space-y-1 rounded border border-zinc-200 bg-white p-3">
+      <div className="space-y-1 card p-3">
         <ProviderNotice provider={it.travelProvider} basis={it.travelBasis} />
         <p className="text-zinc-500">{it.disclaimer}</p>
         {it.coverage.uncovered.length > 0 && (
@@ -88,8 +88,8 @@ export function ItineraryView({
       </div>
 
       <div className="space-y-3">
-        <section className="rounded border border-zinc-200 bg-white p-3">
-          <h2 className="mb-2 font-medium">Overview and workload</h2>
+        <section className="card p-3">
+          <h2 className="mb-3 text-base font-semibold">Overview and workload</h2>
           <ul className="space-y-2">
             {it.days.map((d) => (
               <li key={d.day}>
@@ -116,14 +116,14 @@ export function ItineraryView({
             ))}
           </p>
         </section>
-        <section className="rounded border border-zinc-200 bg-white p-3">
-          <h2 className="mb-2 font-medium">Budget</h2>
+        <section className="card p-3">
+          <h2 className="mb-3 text-base font-semibold">Budget</h2>
           <BudgetTable budget={it.budget} />
         </section>
       </div>
 
       {actions && (
-        <section className="flex flex-wrap items-end gap-2 rounded border border-zinc-200 bg-white p-3">
+        <section className="flex flex-wrap items-end gap-2 card p-3">
           <div className="min-w-64 flex-1">
             <span className="text-xs text-zinc-600">Add a must-visit place</span>
             <Autocomplete
@@ -143,7 +143,7 @@ export function ItineraryView({
             type="button"
             disabled={actions.busy}
             onClick={() => actions.edit({ kind: 'replan', locked: [...locked] })}
-            className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50"
+            className="btn-primary"
           >
             Replan, keeping locked stops
           </button>
@@ -161,7 +161,7 @@ export function ItineraryView({
             role="tab"
             aria-selected={d === day}
             onClick={() => setDayIdx(i)}
-            className={`rounded px-3 py-1 ${d === day ? 'bg-teal-700 text-white' : 'bg-white ring-1 ring-zinc-200'}`}
+            className={`rounded-full px-3.5 py-1 text-sm font-medium ${d === day ? 'bg-teal-700 text-white shadow-sm' : 'bg-white text-zinc-700 ring-1 ring-zinc-200 hover:ring-zinc-300'}`}
           >
             Day {d.day} · {label(d.dayOfWeek.toLowerCase())}
           </button>
@@ -274,14 +274,18 @@ function DayView({
           </p>
         )}
       </div>
-      <div className="space-y-2 rounded border border-zinc-200 bg-white p-3">
+      <div className="card space-y-3 p-4">
         <p>
           {hhmm(day.start)}–{hhmm(day.end)} · {label(day.pace.toLowerCase())} pace ·{' '}
           {day.workload.freeMinutes} min free ·{' '}
           {day.returnToBase ? `back at base ${hhmm(day.endOfDay)}` : `ends ${hhmm(day.endOfDay)}`}
         </p>
-        <ol aria-label={`Day ${day.day} stops`} className="space-y-1">
-          {entries.map((e) =>
+        {/* Route rail: one line joins the day's stops; entries cascade in when a plan arrives. */}
+        <ol
+          aria-label={`Day ${day.day} stops`}
+          className="reveal relative space-y-2 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-0.5 before:rounded-full before:bg-teal-100"
+        >
+          {entries.map((e, i) =>
             e.stop ? (
               <StopItem
                 key={e.stop.place.id}
@@ -289,17 +293,37 @@ function DayView({
                 day={day.day}
                 days={days}
                 actions={actions}
+                index={i}
               />
             ) : (
-              <li key={'meal' + e.meal!.label} className="px-2 text-zinc-600">
-                {e.meal!.label} {hhmm(e.meal!.start)}–{hhmm(e.meal!.end)}
-                {e.meal!.place ? ` at ${e.meal!.place}` : ' (break)'}
+              <li
+                key={'meal' + e.meal!.label}
+                style={{ '--i': i } as React.CSSProperties}
+                className="relative pl-8 text-sm text-zinc-700"
+              >
+                <span
+                  aria-hidden
+                  className="absolute top-1.5 left-[7px] size-2.5 rounded-full bg-amber-400 ring-4 ring-white"
+                />
+                <span className="tabular">
+                  {e.meal!.label} {hhmm(e.meal!.start)}–{hhmm(e.meal!.end)}
+                </span>
+                <span className="text-zinc-500">
+                  {e.meal!.place ? ` at ${e.meal!.place}` : ' (break)'}
+                </span>
               </li>
             ),
           )}
           {day.returnToBase && (
-            <li className="px-2 text-xs text-zinc-500">
-              ↩ {day.returnTravelMinutes} min back to base
+            <li
+              style={{ '--i': entries.length } as React.CSSProperties}
+              className="relative pl-8 text-xs text-zinc-500"
+            >
+              <span
+                aria-hidden
+                className="absolute top-0.5 left-[6px] size-3 rounded-full border-2 border-teal-700 bg-white"
+              />
+              {day.returnTravelMinutes} min back to base
             </li>
           )}
         </ol>
@@ -313,89 +337,99 @@ function DayView({
   )
 }
 
-const btn = 'rounded px-2 py-0.5 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100 disabled:opacity-50'
+const btn = 'btn-sm'
 
 function StopItem({
   s,
   day,
   days,
   actions,
+  index = 0,
 }: {
   s: Stop
   day: number
   days: number
   actions?: StopActions
+  index?: number
 }) {
   const name = s.place.name
   const locked = actions?.locked.has(s.place.id) ?? false
   return (
-    <li className={`rounded p-2 ${locked ? 'bg-teal-50' : 'bg-zinc-50'}`}>
-      <div className="text-xs text-zinc-500">
-        ↓ {s.travelMinutes} min, {s.travelKm.toFixed(1)} km
+    <li style={{ '--i': index } as React.CSSProperties} className="relative pl-8">
+      <span
+        aria-hidden
+        className={`absolute top-7 left-[5px] size-3.5 rounded-full ring-4 ring-white ${locked ? 'bg-clay-500' : 'bg-teal-700'}`}
+      />
+      <div className="pb-1 text-xs text-zinc-500 tabular">
+        {s.travelMinutes} min, {s.travelKm.toFixed(1)} km
         {s.waitMinutes > 0 && ` · waits ${s.waitMinutes} min for opening`}
       </div>
-      <span className="font-medium">
-        {s.order}. {name}
-      </span>{' '}
-      <span className="text-zinc-600">
-        {hhmm(s.start)}–{hhmm(s.end)} ({s.visitMinutes} min)
-      </span>
-      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-zinc-600">
-        <span>{s.cost.unknown ? 'cost not known' : `₹${s.cost.max}`}</span>
-        <ConfidenceBadge confidence={s.cost.confidence as Confidence} />
-        <span>· hours {label(s.hours.status.toLowerCase())}</span>
-        <ConfidenceBadge confidence={s.hours.confidence as Confidence} />
-        {s.kind === 'MUST_VISIT' && <span className="text-teal-800">· must-visit</span>}
-      </div>
-      <div className="text-xs text-zinc-500">{s.reason}</div>
-      {actions && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          <button
-            type="button"
-            aria-label={`Lock ${name}`}
-            aria-pressed={locked}
-            className={btn}
-            onClick={() => actions.toggleLock(s)}
-          >
-            {locked ? 'Locked' : 'Lock'}
-          </button>
-          <button
-            type="button"
-            aria-label={`Remove ${name}`}
-            disabled={actions.busy}
-            className={btn}
-            onClick={() => actions.edit({ kind: 'remove', placeId: s.place.id })}
-          >
-            Remove
-          </button>
-          <button
-            type="button"
-            aria-label={`Replace ${name}`}
-            disabled={actions.busy}
-            className={btn}
-            onClick={() => actions.edit({ kind: 'replace', placeId: s.place.id })}
-          >
-            Replace
-          </button>
-          {days > 1 && (
-            <select
-              aria-label={`Move ${name} to day`}
-              value={day}
-              disabled={actions.busy}
-              onChange={(e) =>
-                actions.edit({ kind: 'move', placeId: s.place.id, day: Number(e.target.value) })
-              }
-              className="rounded text-xs ring-1 ring-zinc-300"
-            >
-              {Array.from({ length: days }, (_, i) => (
-                <option key={i} value={i + 1}>
-                  Day {i + 1}
-                </option>
-              ))}
-            </select>
-          )}
+      <div
+        className={`rounded-lg border p-3 transition-colors ${locked ? 'border-clay-100 bg-clay-50' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
+      >
+        <span className="font-semibold text-zinc-900">
+          {s.order}. {name}
+        </span>{' '}
+        <span className="text-sm text-zinc-600 tabular">
+          {hhmm(s.start)}–{hhmm(s.end)} ({s.visitMinutes} min)
+        </span>
+        <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-zinc-600">
+          <span>{s.cost.unknown ? 'cost not known' : `₹${s.cost.max}`}</span>
+          <ConfidenceBadge confidence={s.cost.confidence as Confidence} />
+          <span>· hours {label(s.hours.status.toLowerCase())}</span>
+          <ConfidenceBadge confidence={s.hours.confidence as Confidence} />
+          {s.kind === 'MUST_VISIT' && <span className="text-teal-800">· must-visit</span>}
         </div>
-      )}
+        <div className="text-xs text-zinc-500">{s.reason}</div>
+        {actions && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            <button
+              type="button"
+              aria-label={`Lock ${name}`}
+              aria-pressed={locked}
+              className={btn}
+              onClick={() => actions.toggleLock(s)}
+            >
+              {locked ? 'Locked' : 'Lock'}
+            </button>
+            <button
+              type="button"
+              aria-label={`Remove ${name}`}
+              disabled={actions.busy}
+              className={btn}
+              onClick={() => actions.edit({ kind: 'remove', placeId: s.place.id })}
+            >
+              Remove
+            </button>
+            <button
+              type="button"
+              aria-label={`Replace ${name}`}
+              disabled={actions.busy}
+              className={btn}
+              onClick={() => actions.edit({ kind: 'replace', placeId: s.place.id })}
+            >
+              Replace
+            </button>
+            {days > 1 && (
+              <select
+                aria-label={`Move ${name} to day`}
+                value={day}
+                disabled={actions.busy}
+                onChange={(e) =>
+                  actions.edit({ kind: 'move', placeId: s.place.id, day: Number(e.target.value) })
+                }
+                className="rounded text-xs ring-1 ring-zinc-300"
+              >
+                {Array.from({ length: days }, (_, i) => (
+                  <option key={i} value={i + 1}>
+                    Day {i + 1}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+      </div>
     </li>
   )
 }

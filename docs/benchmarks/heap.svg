@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 400" width="780" height="400" role="img" aria-label="Indexed max heap vs linear-scan list: time per operation">
+<style>
+  .bg{fill:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.grid{stroke:#e4e3df}.axis{stroke:#b9b8b2}.ring{stroke:#fcfcfb}
+  .s0{stroke:#2a78d6}.f0{fill:#2a78d6}.s1{stroke:#eb6834}.f1{fill:#eb6834}.s2{stroke:#1baf7a}.f2{fill:#1baf7a}.s3{stroke:#eda100}.f3{fill:#eda100}
+  @media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.grid{stroke:#383835}.axis{stroke:#5d5c57}.ring{stroke:#1a1a19}
+  .s0{stroke:#3987e5}.f0{fill:#3987e5}.s1{stroke:#d95926}.f1{fill:#d95926}.s2{stroke:#199e70}.f2{fill:#199e70}.s3{stroke:#c98500}.f3{fill:#c98500}}
+  text{font:12px system-ui,-apple-system,"Segoe UI",sans-serif}.title{font-size:15px;font-weight:600}
+</style>
+<rect class="bg" width="780" height="400"/>
+<text class="t1 title" x="72" y="24">Indexed max heap vs linear-scan list: time per operation</text>
+<line class="s0" x1="72" y1="44" x2="90" y2="44" stroke-width="2"/>
+<text class="t2" x="96" y="48">indexed-heap</text>
+<line class="s1" x1="190" y1="44" x2="208" y2="44" stroke-width="2"/>
+<text class="t2" x="214" y="48">linear-scan</text>
+<line class="grid" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="64" y="352" text-anchor="end">10 ns</text>
+<line class="grid" x1="72" x2="550" y1="253.33333333333334" y2="253.33333333333334" stroke-width="1"/>
+<text class="t2" x="64" y="257.33333333333337" text-anchor="end">100 ns</text>
+<line class="grid" x1="72" x2="550" y1="158.66666666666669" y2="158.66666666666669" stroke-width="1"/>
+<text class="t2" x="64" y="162.66666666666669" text-anchor="end">1 µs</text>
+<line class="grid" x1="72" x2="550" y1="64" y2="64" stroke-width="1"/>
+<text class="t2" x="64" y="68" text-anchor="end">10 µs</text>
+<text class="t2" x="72" y="366" text-anchor="middle">1K</text>
+<text class="t2" x="249.10459887737588" y="366" text-anchor="middle">10K</text>
+<text class="t2" x="426.20919775475176" y="366" text-anchor="middle">100K</text>
+<text class="t2" x="550" y="366" text-anchor="middle">500K</text>
+<line class="axis" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="311" y="390" text-anchor="middle">Operations N (log scale)</text>
+<text class="t2" transform="translate(16 206) rotate(-90)" text-anchor="middle">median time per operation (log scale)</text>
+<path class="s0" d="M72.0,229.8L249.1,244.7L426.2,233.4L550.0,224.2" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f0 ring" cx="72.0" cy="229.8" r="4" stroke-width="2"><title>indexed-heap, N=1K: 177 ns</title></circle>
+<circle class="f0 ring" cx="249.1" cy="244.7" r="4" stroke-width="2"><title>indexed-heap, N=10K: 123 ns</title></circle>
+<circle class="f0 ring" cx="426.2" cy="233.4" r="4" stroke-width="2"><title>indexed-heap, N=100K: 162 ns</title></circle>
+<circle class="f0 ring" cx="550.0" cy="224.2" r="4" stroke-width="2"><title>indexed-heap, N=500K: 203 ns</title></circle>
+<path class="s1" d="M72.0,265.1L249.1,237.6L426.2,126.5" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f1 ring" cx="72.0" cy="265.1" r="4" stroke-width="2"><title>linear-scan, N=1K: 75 ns</title></circle>
+<circle class="f1 ring" cx="249.1" cy="237.6" r="4" stroke-width="2"><title>linear-scan, N=10K: 147 ns</title></circle>
+<circle class="f1 ring" cx="426.2" cy="126.5" r="4" stroke-width="2"><title>linear-scan, N=100K: 2.18 µs</title></circle>
+<text class="t1" x="436.20919775475176" y="130.54441661110772">linear-scan 2.18 µs</text>
+<text class="t1" x="560" y="228.17310752947532">indexed-heap 203 ns</text>
+</svg>

@@ -325,6 +325,44 @@ class ItineraryPlannerTest {
     }
 
     @Test
+    void lunchIsTakenInItsWindowEvenWhenTheNextStopIsALateOpeningRestaurant() {
+        // Seen in a Goa nightlife plan: a food stop opening in the evening deferred the lunch break to 18:27.
+        PlaceSummary morning = add("Morning Beach", "beach", 0.004, 0, 60, 60);
+        PlaceSummary night = add("Night Beach", "beach", 0.006, 0, 60, 60);
+        PlaceSummary diner = add("Evening Diner", "food", 0.005, 0.002, 60, 60);
+        hoursFor(diner, "Mo-Su 18:00-23:00");
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"interests\":{\"beach\":5},\"fillFreeTime\":false,"
+                + "\"dayStart\":\"09:00\",\"dayEnd\":\"23:30\",\"mustVisit\":[\"" + diner.id() + "\"],"
+                + "\"fixedStops\":[{\"placeId\":\"" + morning.id()
+                + "\",\"day\":1,\"start\":\"09:30\",\"minutes\":180},"
+                + "{\"placeId\":\"" + night.id() + "\",\"day\":1,\"start\":\"21:30\",\"minutes\":60}]");
+        assertTimelinesFit(it);
+        Itinerary.Day d = it.days().getFirst();
+        assertTrue(names(it).contains("Evening Diner"), names(it).toString());
+        Itinerary.Meal lunch = d.meals().stream()
+                .filter(m -> m.label().equals("Lunch"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no lunch: " + d.meals()));
+        assertFalse(lunch.start().isAfter(LocalTime.of(15, 30)), "lunch at " + lunch.start());
+        assertFalse(lunch.start().isBefore(LocalTime.of(12, 0)), "lunch at " + lunch.start());
+    }
+
+    @Test
+    void clubWithUnparseableHoursGetsTheEveningEstimateNotAnAfternoonSlot() {
+        PlaceSummary club = add("Sunset Club", "nightlife", 0.004, 0, 120, 150);
+        hoursFor(club, "sunset till late");
+        cluster(4, "beach", 0.006);
+        Itinerary it = plan("\"startDate\":\"" + FRIDAY + "\",\"interests\":{\"nightlife\":5,\"beach\":3},"
+                + "\"mustVisit\":[\"" + club.id() + "\"],\"dayStart\":\"11:30\",\"dayEnd\":\"03:00\"");
+        Itinerary.Stop s = allStops(it).stream()
+                .filter(x -> x.place().id().equals(club.id()))
+                .findFirst()
+                .orElseThrow();
+        assertFalse(s.start().isBefore(LocalTime.of(20, 0)) && s.start().isAfter(LocalTime.of(3, 0)), s.start() + "");
+        assertEquals("ESTIMATED", s.hours().status());
+    }
+
+    @Test
     void dayCanEndAfterMidnightAndBarsGetEstimatedEveningHours() {
         PlaceSummary pub = add("Night Pub", "nightlife", 0.004, 0, 120, 150);
         cluster(4, "beach", 0.006);

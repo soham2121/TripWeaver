@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 400" width="780" height="400" role="img" aria-label="Trie vs linear scan: time per autocomplete query">
+<style>
+  .bg{fill:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.grid{stroke:#e4e3df}.axis{stroke:#b9b8b2}.ring{stroke:#fcfcfb}
+  .s0{stroke:#2a78d6}.f0{fill:#2a78d6}.s1{stroke:#eb6834}.f1{fill:#eb6834}.s2{stroke:#1baf7a}.f2{fill:#1baf7a}.s3{stroke:#eda100}.f3{fill:#eda100}
+  @media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.grid{stroke:#383835}.axis{stroke:#5d5c57}.ring{stroke:#1a1a19}
+  .s0{stroke:#3987e5}.f0{fill:#3987e5}.s1{stroke:#d95926}.f1{fill:#d95926}.s2{stroke:#199e70}.f2{fill:#199e70}.s3{stroke:#c98500}.f3{fill:#c98500}}
+  text{font:12px system-ui,-apple-system,"Segoe UI",sans-serif}.title{font-size:15px;font-weight:600}
+</style>
+<rect class="bg" width="780" height="400"/>
+<text class="t1 title" x="72" y="24">Trie vs linear scan: time per autocomplete query</text>
+<line class="s0" x1="72" y1="44" x2="90" y2="44" stroke-width="2"/>
+<text class="t2" x="96" y="48">trie</text>
+<line class="s1" x1="134" y1="44" x2="152" y2="44" stroke-width="2"/>
+<text class="t2" x="158" y="48">linear-scan</text>
+<line class="grid" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="64" y="352" text-anchor="end">1 µs</text>
+<line class="grid" x1="72" x2="550" y1="291.20000000000005" y2="291.20000000000005" stroke-width="1"/>
+<text class="t2" x="64" y="295.20000000000005" text-anchor="end">10 µs</text>
+<line class="grid" x1="72" x2="550" y1="234.4" y2="234.4" stroke-width="1"/>
+<text class="t2" x="64" y="238.4" text-anchor="end">100 µs</text>
+<line class="grid" x1="72" x2="550" y1="177.60000000000002" y2="177.60000000000002" stroke-width="1"/>
+<text class="t2" x="64" y="181.60000000000002" text-anchor="end">1 ms</text>
+<line class="grid" x1="72" x2="550" y1="120.79999999999998" y2="120.79999999999998" stroke-width="1"/>
+<text class="t2" x="64" y="124.79999999999998" text-anchor="end">10 ms</text>
+<line class="grid" x1="72" x2="550" y1="64" y2="64" stroke-width="1"/>
+<text class="t2" x="64" y="68" text-anchor="end">100 ms</text>
+<text class="t2" x="72" y="366" text-anchor="middle">1K</text>
+<text class="t2" x="231.33333333333331" y="366" text-anchor="middle">10K</text>
+<text class="t2" x="390.66666666666663" y="366" text-anchor="middle">100K</text>
+<text class="t2" x="550" y="366" text-anchor="middle">1M</text>
+<line class="axis" x1="72" x2="550" y1="348" y2="348" stroke-width="1"/>
+<text class="t2" x="311" y="390" text-anchor="middle">Indexed terms (log scale)</text>
+<text class="t2" transform="translate(16 206) rotate(-90)" text-anchor="middle">median time per operation (log scale)</text>
+<path class="s0" d="M72.0,332.8L231.3,323.0L390.7,333.9L550.0,337.6" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f0 ring" cx="72.0" cy="332.8" r="4" stroke-width="2"><title>trie, N=1K: 1.85 µs</title></circle>
+<circle class="f0 ring" cx="231.3" cy="323.0" r="4" stroke-width="2"><title>trie, N=10K: 2.75 µs</title></circle>
+<circle class="f0 ring" cx="390.7" cy="333.9" r="4" stroke-width="2"><title>trie, N=100K: 1.77 µs</title></circle>
+<circle class="f0 ring" cx="550.0" cy="337.6" r="4" stroke-width="2"><title>trie, N=1M: 1.52 µs</title></circle>
+<path class="s1" d="M72.0,304.9L231.3,232.1L390.7,178.1L550.0,85.4" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f1 ring" cx="72.0" cy="304.9" r="4" stroke-width="2"><title>linear-scan, N=1K: 5.74 µs</title></circle>
+<circle class="f1 ring" cx="231.3" cy="232.1" r="4" stroke-width="2"><title>linear-scan, N=10K: 110 µs</title></circle>
+<circle class="f1 ring" cx="390.7" cy="178.1" r="4" stroke-width="2"><title>linear-scan, N=100K: 978 µs</title></circle>
+<circle class="f1 ring" cx="550.0" cy="85.4" r="4" stroke-width="2"><title>linear-scan, N=1M: 42.1 ms</title></circle>
+<text class="t1" x="560" y="89.36220106440044">linear-scan 42.1 ms</text>
+<text class="t1" x="560" y="341.6194063169053">trie 1.52 µs</text>
+</svg>

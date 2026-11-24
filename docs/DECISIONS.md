@@ -246,3 +246,78 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
 - **Live updates:** the trip page polls every 15 s and shows a companion's newer version when it is idle. No WebSockets (plan 8.2 says polling is enough for the MVP).
 - **Storage:** trips store the planner request and result as JSON text. Planning stays pure, and a saved trip can be planned again with the stored request.
 - **Column name:** `activity_suggestions.day_number`, because `day` is reserved in H2, the test database.
+
+## D36 — Supabase via the Session Pooler; PostGIS geography as a generated column
+
+- **Decision:** Supabase Free hosts PostgreSQL. The backend connects through the Session Pooler (IPv4; session mode keeps prepared statements) with `SPRING_DATASOURCE_*`. `places.geog` is a stored generated column computed from latitude and longitude, with a GiST index.
+- **Why:**
+  - The direct host is IPv6-only and unreachable from the dev network.
+  - A generated column means the existing importers and H2 tests need no change, and the two location forms cannot drift apart.
+  - PostgreSQL-only SQL lives in `db/vendor/postgresql`, so the H2 tests still run every portable migration.
+- **Kept local:** the docker-compose PostGIS database stays the default when `SPRING_DATASOURCE_URL` is unset.
+
+## D37 — RLS deny-all instead of policies
+
+- **Decision:** RLS is on for every table, with no policies and no grants to `anon`/`authenticated`.
+- **Why:** the frontend never talks to Supabase directly; Spring Boot owns permissions (D35). This closes the Supabase Data API path completely.
+
+## D38 — Google Places: on demand, ID-only storage, own daily ceiling (superseded by D39)
+
+- **Decision:**
+  - One endpoint per place, called only from a button.
+  - An IDs-only Text Search, then a field-masked Place Details request.
+  - Only the place ID is stored.
+  - An in-process daily counter (`GOOGLE_PLACES_DAILY_LIMIT`) plus a Google Cloud quota cap.
+- **Why:** Google policy allows storing place IDs but not other content, and field masks keep billing to the fields shown. The counter is per backend instance and resets on restart, so the Cloud quota cap is the hard limit.
+
+## D39 — No Google Places API (product decision, 2026-11-24)
+
+- **Decision:** Google Places API is out of scope for the MVP and later releases unless this decision is reversed. No Google Cloud project, billing, key, SDK, HTTP client, API call, feature flag or dormant integration. No Google ratings, reviews, photos or other Places content. No scraping of Google Maps or Google search.
+- **Why:** Google Cloud billing could not be set up, and the product must not depend on a paid provider. The catalogue is TripWeaver's own: OSM for places and geography, official sources for curated fields, unknown where neither has the fact.
+- **Done:** the D38 code (`external/` package, enrichment endpoint, frontend panel, `GOOGLE_*` settings, 9 + 3 tests) was removed before it was ever committed. Phase 11 became the no-Google-dependency verification phase.
+- **Left in the database:** `external_place_references` (V5) and `places.google_place_id` (V2), both empty. Dropping them waits for owner approval (Q7).
+- **Still allowed:** Google Maps directions URLs (`https://www.google.com/maps/dir/?api=1...`) as an external navigation link. They need no key and return nothing.
+
+## D40 — Labelled straight-line estimate when road routing is down
+
+- **Decision:** when OSRM is unreachable, the planner still schedules with a straight-line distance × detour factor at a mode speed, and every response says so: `route.provider = ESTIMATE`, a warning, and the UI notice "Road routing unavailable: travel times are straight-line estimates". It never reports these as road distances.
+- **Why:** time feasibility needs some travel time to work at all. Showing the basis keeps the estimate honest; hiding the whole plan would remove a core feature for an optional service.
+
+## D41 — Map tile provider is configurable
+
+- **Decision:** `VITE_MAP_STYLE_URL` (frontend build-time) selects the MapLibre style; default OpenFreeMap `liberty`. Attribution comes from the style.
+- **Why:** the public OSM tile server is not for heavy use, and a tile provider's terms can change. Switching needs no code change.
+
+## D42 — Build target Java 21 (refines D1)
+
+- **Decision:** `pom.xml` `java.version` = 21. The dev machine keeps running JDK 25.
+- **Why:** the team brief names Java 21. The code compiles with `--release 21` unchanged (checked 2026-11-24), so the build now works on JDK 21 or newer, which removes D1's cost ("examiner machine needs JDK 25").
+
+## D43 — Meal breaks stay in their window
+
+- **Decision:** a lunch or dinner break falls due when its window opens (lunch 12:30, dinner 19:30). It can come up to 30 min early when the next stop would otherwise overrun the window. A food stop replaces the break only if it will actually start inside the window. A break more than 60 min past its window's latest start (lunch 14:30, dinner 21:30) is dropped, never scheduled late, and the existing "No separate lunch break" warning explains it.
+- **Why:** a restaurant opening at 18:00 used to push lunch to 18:27.
+
+## D44 — Unparseable nightlife hours use the evening estimate
+
+- **Decision:** a bar or nightclub whose OSM hours cannot be parsed is planned with the labelled 20:00–03:00 estimate (status ESTIMATED, confidence CURATED_ESTIMATE), the same as one with no hours. Place details still show the raw OSM text.
+- **Why:** "unparsed" used to mean "no constraint", which put clubs in afternoon slots. Resolves the open item from 2026-11-24.
+
+## D45 — Solo project (resolves Q1)
+
+- **Decision:** TripWeaver is a one-person project. The course teacher gave permission for an individual submission instead of a group of 2–3 (owner, 2026-11-24).
+- **Effect:** `docs/CONTRIBUTIONS.md` lists one contributor who did all the work. The CIA "group of 2–3" row reads "Solo, with teacher permission". The viva preparation covers all five algorithms for one person.
+
+## D46 — Google leftovers dropped (resolves Q7)
+
+- **Decision:** `V7__drop_google_leftovers.sql` drops `external_place_references` and `places.google_place_id`. Both were empty and unused after D39.
+- **Approval:** the owner approved it on 2026-11-24.
+
+## D47 — Visual system "Indigo & clay" (2026-11-24)
+
+- **Decision:**
+  - Colour is region-neutral, because TripWeaver will scale to all of India: indigo for actions and selection, a terracotta clay accent (the user's own values such as locked stops and entered costs, overnight stays, the selected map point), and warm paper neutrals. No flag colours.
+  - Type is self-hosted Figtree for the UI and Bricolage Grotesque for page headings, through `@fontsource-variable`, so the demo works offline. Root size is 17px.
+  - Motion has one authored moment: the day timeline cascades in on a route rail when a plan arrives. Elsewhere there are 150–250 ms state transitions, route cross-fades with a sliding active-nav pill (View Transitions), and skeletons while plans load. `prefers-reduced-motion` keeps fades and drops movement.
+- **How:** `frontend/src/index.css` remaps Tailwind's `zinc` (neutrals) and `teal` (brand) scales in `@theme` and adds `clay`, so `teal-700` is the brand indigo. Shared classes: `card`, `card-link`, `btn-primary`, `btn-secondary`, `btn-sm`, `field`, `skeleton`, `reveal`. Map route and markers use the same hex values (MapLibre cannot parse OKLCH).
+- **Fixed on the way:** map stop numbers never drew, because the default label font (Open Sans) 404s on OpenFreeMap. Labels now use Noto Sans Bold.

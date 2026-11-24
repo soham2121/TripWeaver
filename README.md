@@ -26,15 +26,16 @@ Algorithm details: [`docs/ALGORITHM_DESIGN.md`](docs/ALGORITHM_DESIGN.md). Tests
 
 ## Prerequisites
 
-- JDK 25. `JAVA_HOME` must point to it, because Maven uses `JAVA_HOME`.
+- JDK 21 or newer (the build targets Java 21). `JAVA_HOME` must point to it, because Maven uses `JAVA_HOME`.
 - Node.js 24 and npm
-- Docker (for PostgreSQL, and optionally OSRM)
+- Docker (for the local PostGIS database, and optionally OSRM). Not needed for the database when you use Supabase.
 
 ## Run locally
 
 ```bash
-# 1. Database (PostgreSQL 17 on host port 5433)
+# 1. Database: EITHER local PostgreSQL 17 + PostGIS on host port 5433
 docker compose up -d db
+#    OR hosted Supabase: copy .env.example to .env and set SPRING_DATASOURCE_* (see "Supabase" below)
 
 # 2. Optional road routing (OSRM on host port 5001). One-off preprocessing, about 10 minutes:
 #    needs data/raw/western-zone-261122.osm.pbf (see docs/DATA_SOURCES.md)
@@ -59,7 +60,23 @@ Open http://localhost:5173.
 
 **First start:** the backend imports the Goa and Konkan catalogues from `data/` on an empty database, which takes a few seconds. Requests made during the import can see an incomplete catalogue, so wait for the `Catalogue import goa` and `Catalogue import konkan` log lines before the first plan.
 
-Configuration comes from environment variables. See [`.env.example`](.env.example). No API keys are needed for the core workflow.
+Configuration comes from environment variables or a `.env` file at the repo root (read by the backend; real environment variables win). See [`.env.example`](.env.example). No API keys are needed for the core workflow.
+
+### Supabase (hosted database)
+
+1. In the Supabase dashboard open **Connect → Session pooler** (IPv4). The direct `db.<ref>.supabase.co` host is IPv6-only on the Free plan.
+2. Copy `.env.example` to `.env` and uncomment the three `SPRING_DATASOURCE_*` lines: JDBC URL `jdbc:postgresql://<pooler host>:5432/postgres?sslmode=require`, user `postgres.<project-ref>`, and the database password. Never commit `.env`.
+3. Start the backend. Flyway creates the schema (V1–V6: catalogue, PostGIS geography column and GiST index, RLS on every table). The first start imports the Goa and Konkan catalogues (about 11,500 places, about 35 MB).
+4. Check: `supabase link --project-ref <ref>`, then `supabase db query --linked -f "$PWD/scripts/verify-db.sql"` (the CLI resolves relative paths against its workdir) (every `ok` must be true) and `supabase db advisors --linked`.
+
+Rebuild or move the catalogue: it is derived entirely from files in Git (`data/sample`, `data/curated`), so an empty database rebuilds it on start. `tripweaver.catalogue.reimport=true` forces a re-import (idempotent upsert by OSM id). User and trip data can be exported with `supabase db dump --linked --data-only`.
+
+### Maps, routing and navigation (no Google API)
+
+- **Map tiles:** MapLibre with OpenFreeMap's OSM-based style by default. Set `VITE_MAP_STYLE_URL` in `frontend/.env.local` to use another provider (see `frontend/.env.example`).
+- **Road routing:** self-hosted OSRM. Without it the app says "Road routing unavailable" and labels travel times as straight-line estimates.
+- **Navigation:** "Open in Google Maps" links are plain directions URLs built from coordinates. No Google API, key or account is involved, and TripWeaver reads nothing back.
+- TripWeaver does not use the Google Places API (decision D39).
 
 ## Tests and checks
 
@@ -73,7 +90,7 @@ cd frontend && npm run format      # Prettier
 cd frontend && npm run build       # type-check + production build
 ```
 
-Current suite: 206 backend tests and 34 frontend tests.
+Current suite: 216 backend tests and 36 frontend tests.
 
 ## Project layout
 

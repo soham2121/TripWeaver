@@ -124,5 +124,6 @@ cd backend
 
 ## 8. Not used yet
 
-- **Google Places:** optional, Phase 11. Provider-off by default. Nothing stored.
+- **Google Places API:** not used (D39). No key, no requests, no Google content stored. Google Maps appears only as directions links for navigation.
+- **Goa-only extract:** Geofabrik has no Goa file; India is split into zones, and Goa is in the Western Zone. The Java extractor crops the Western Zone PBF to the Goa boundary relation, so the raw zone file stays local and only the derived JSON is in Git. The database holds no raw PBF, road geometry or routing data.
 - **Weather:** not part of the current plan.

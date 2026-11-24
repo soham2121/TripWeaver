@@ -1,1 +1,271 @@
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/bricolage-grotesque';
 @import 'tailwindcss';
+
+/*
+ * TripWeaver visual system: "Indigo & clay".
+ * Pan-Indian and region-neutral: indigo (neel) for actions and selection, a terracotta clay accent used
+ * sparingly, warm paper neutrals for surfaces. Components keep Tailwind's `zinc` and `teal` names; this
+ * file remaps those scales, so `teal-700` IS the brand indigo and `zinc-*` are the warm neutrals.
+ */
+@theme {
+  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, sans-serif;
+
+  /* Warm paper neutrals (replace zinc). 500+ pass 4.5:1 on white and on the canvas. */
+  --color-zinc-50: oklch(0.982 0.005 85);
+  --color-zinc-100: oklch(0.958 0.007 85);
+  --color-zinc-200: oklch(0.915 0.009 85);
+  --color-zinc-300: oklch(0.855 0.011 85);
+  --color-zinc-400: oklch(0.7 0.013 82);
+  --color-zinc-500: oklch(0.52 0.014 80);
+  --color-zinc-600: oklch(0.44 0.014 80);
+  --color-zinc-700: oklch(0.36 0.013 80);
+  --color-zinc-800: oklch(0.27 0.012 80);
+  --color-zinc-900: oklch(0.2 0.011 80);
+  --color-zinc-950: oklch(0.15 0.01 80);
+
+  /* Brand indigo (replaces teal). 700 = primary action, 50/100 = selected and soft fills. */
+  --color-teal-50: oklch(0.968 0.018 278);
+  --color-teal-100: oklch(0.935 0.036 278);
+  --color-teal-200: oklch(0.875 0.066 278);
+  --color-teal-300: oklch(0.79 0.1 278);
+  --color-teal-400: oklch(0.68 0.135 278);
+  --color-teal-500: oklch(0.585 0.16 278);
+  --color-teal-600: oklch(0.5 0.17 278);
+  --color-teal-700: oklch(0.43 0.165 278);
+  --color-teal-800: oklch(0.365 0.14 278);
+  --color-teal-900: oklch(0.3 0.11 278);
+  --color-teal-950: oklch(0.22 0.08 278);
+
+  /* Clay accent: brand mark, map highlights, "you entered" values. Never for primary actions. */
+  --color-clay-50: oklch(0.97 0.018 45);
+  --color-clay-100: oklch(0.935 0.04 45);
+  --color-clay-500: oklch(0.62 0.155 42);
+  --color-clay-600: oklch(0.55 0.15 40);
+  --color-clay-700: oklch(0.47 0.13 38);
+  --color-clay-800: oklch(0.39 0.11 36);
+
+  /* Softer geometry: `rounded` is 8px, `rounded-lg` 12px. */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-card: 0 1px 2px oklch(0.25 0.02 80 / 0.05), 0 2px 8px -2px oklch(0.25 0.02 80 / 0.07);
+  --shadow-lift:
+    0 2px 4px oklch(0.25 0.03 278 / 0.06), 0 10px 24px -8px oklch(0.25 0.05 278 / 0.18);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-rise: rise 360ms var(--ease-out-expo) both;
+  --animate-fade: fade 220ms ease-out both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@layer base {
+  html {
+    font-size: 106.25%; /* 17px: the UI is dense, so lift every rem-based size a step */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-zinc-50 font-sans text-zinc-900;
+    font-feature-settings: 'ss01' on;
+  }
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--color-teal-100);
+    color: var(--color-teal-950);
+  }
+  :where(input, textarea) {
+    caret-color: var(--color-teal-700);
+  }
+  :where(input[type='checkbox'], input[type='radio'], input[type='range'], progress) {
+    accent-color: var(--color-teal-700);
+  }
+  :where(input:not([type='checkbox'], [type='radio'], [type='range']), select, textarea) {
+    background-color: white;
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+  :where(input:not([type='checkbox'], [type='radio'], [type='range']), select, textarea):hover {
+    border-color: var(--color-zinc-400);
+  }
+  :where(input:not([type='checkbox'], [type='radio'], [type='range']), select, textarea):focus {
+    outline: none;
+    border-color: var(--color-teal-600);
+    box-shadow: 0 0 0 3px oklch(0.5 0.17 278 / 0.18);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-teal-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  :where(button, a, [role='tab'], summary) {
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out,
+      box-shadow 150ms ease-out,
+      border-color 150ms ease-out,
+      transform 100ms ease-out;
+  }
+  :where(button:not(:disabled):not(.maplibregl-ctrl button)):active {
+    transform: scale(0.97);
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  summary {
+    cursor: pointer;
+  }
+  /* Times, money and counts line up in columns. */
+  table,
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-zinc-300) transparent;
+  }
+}
+
+@layer components {
+  /* Surface card: white panel on the paper canvas. */
+  .card {
+    @apply rounded-lg border border-zinc-200 bg-white;
+    box-shadow: var(--shadow-card);
+  }
+  /* Navigable card: lifts toward the reader on hover. */
+  .card-link {
+    @apply block rounded-lg border border-zinc-200 bg-white;
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow 200ms var(--ease-out-expo),
+      border-color 200ms ease-out,
+      transform 200ms var(--ease-out-expo);
+  }
+  .card-link:hover {
+    @apply border-teal-200;
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
+  }
+  .card-link .arrow {
+    transition: transform 200ms var(--ease-out-expo);
+  }
+  .card-link:hover .arrow {
+    transform: translateX(3px);
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded bg-teal-700 px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-teal-800 disabled:bg-teal-700 disabled:opacity-50 disabled:shadow-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded bg-white px-3 py-2 font-medium text-zinc-800 ring-1 ring-zinc-300 hover:bg-zinc-50 hover:ring-zinc-400 disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50;
+  }
+  .field {
+    @apply block w-full rounded border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-900 placeholder:text-zinc-500;
+  }
+  /* Placeholder block while results load. */
+  .skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--color-zinc-100) 0%,
+        var(--color-zinc-200) 40%,
+        var(--color-zinc-100) 80%
+      )
+      0 0 / 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: var(--radius-sm);
+  }
+  /* List that cascades in when results arrive; children set --i. Capped so long lists do not wait. */
+  .reveal > * {
+    animation: var(--animate-rise);
+    animation-delay: calc(min(var(--i, 0), 10) * 35ms);
+  }
+}
+
+/* Route changes cross-fade; the active nav pill slides to its new tab. */
+::view-transition-old(root) {
+  animation: 140ms ease-in both fade-out;
+}
+::view-transition-new(root) {
+  animation: 240ms var(--ease-out-expo) both fade-in-up;
+}
+::view-transition-group(nav-pill) {
+  animation-duration: 280ms;
+  animation-timing-function: var(--ease-out-expo);
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Reduced motion: no movement, blur or shimmer; quick fades and colour changes still confirm state. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal > * {
+    animation: var(--animate-fade);
+    animation-delay: 0ms;
+  }
+  .card-link:hover,
+  .card-link:hover .arrow,
+  :where(button):active {
+    transform: none;
+  }
+  .group:hover .group-hover:translate-x-1 {
+    transform: none;
+  }
+  .skeleton {
+    animation: none;
+  }
+  ::view-transition-new(root) {
+    animation: 160ms ease-out both fade-in;
+  }
+  ::view-transition-group(nav-pill) {
+    animation-duration: 1ms;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

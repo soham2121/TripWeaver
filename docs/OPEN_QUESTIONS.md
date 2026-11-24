@@ -4,5 +4,5 @@ Unresolved decisions and blockers. Remove an item when resolved and record the r
 
 | # | Question | Needed by | Default if unanswered |
 |---|---|---|---|
-| Q1 | Team member names and algorithm ownership for `CONTRIBUTIONS.md` | Phase 13 | Placeholder rows; team fills in |
-| Q4 | Google Places API key availability | Phase 11 | Provider-off mode (core app never needs it) |
+| — | None open (2026-11-24). Q1 resolved by D45, Q7 by D46. | | |
+

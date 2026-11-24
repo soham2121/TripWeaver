@@ -39,8 +39,8 @@ export function SharedPage() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded border border-zinc-200 bg-white p-3 text-sm">
-        <h1 className="text-lg font-semibold">{trip.title}</h1>
+      <div className="card p-3 text-sm">
+        <h1 className="text-2xl font-bold">{trip.title}</h1>
         <p className="text-xs text-zinc-600">
           Read-only shared trip · updated {localTime(trip.updatedAt)}
         </p>

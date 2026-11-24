@@ -26,7 +26,7 @@ export function SaveTrip({
 
   if (!user)
     return (
-      <p className="rounded border border-zinc-200 bg-white p-2 text-sm">
+      <p className="card p-2 text-sm">
         <Link
           to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
           className="text-teal-700 underline"
@@ -51,7 +51,7 @@ export function SaveTrip({
 
   return (
     <form
-      className="flex flex-wrap items-end gap-2 rounded border border-zinc-200 bg-white p-2 text-sm"
+      className="flex flex-wrap items-end gap-2 card p-2 text-sm"
       onSubmit={(e) => {
         e.preventDefault()
         void save()
@@ -63,14 +63,10 @@ export function SaveTrip({
           value={title}
           maxLength={120}
           onChange={(e) => setTitle(e.target.value)}
-          className="block w-full rounded border border-zinc-300 px-1"
+          className="field"
         />
       </label>
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded bg-teal-700 px-3 py-1.5 text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={busy} className="btn-primary">
         Save trip
       </button>
       {error && (

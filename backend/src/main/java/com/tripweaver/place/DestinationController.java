@@ -61,6 +61,19 @@ public class DestinationController {
         if (rows.isEmpty()) throw ApiException.notFound("Destination coverage", slug);
         var r = rows.getFirst();
         JsonNode report = json.readTree((String) r.get("report_json"));
+        // Live counts from the catalogue as stored now (not the import report): region -> category -> active places.
+        Map<String, Map<String, Integer>> live = new java.util.TreeMap<>();
+        jdbc.query(
+                """
+                SELECT COALESCE(r.slug, '(none)'), p.primary_category, COUNT(*)
+                FROM places p JOIN destinations d ON d.id = p.destination_id LEFT JOIN regions r ON r.id = p.region_id
+                WHERE d.slug = ? AND p.is_active GROUP BY 1, 2
+                """,
+                rs -> {
+                    live.computeIfAbsent(rs.getString(1), k -> new java.util.TreeMap<>())
+                            .put(rs.getString(2), rs.getInt(3));
+                },
+                slug);
         return Map.of(
                 "destination",
                 slug,
@@ -71,6 +84,8 @@ public class DestinationController {
                 "attribution",
                 PlaceController.OSM_ATTRIBUTION,
                 "report",
-                report);
+                report,
+                "byRegionAndCategory",
+                live);
     }
 }

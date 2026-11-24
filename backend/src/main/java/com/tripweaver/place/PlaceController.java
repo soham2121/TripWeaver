@@ -25,8 +25,10 @@ public class PlaceController {
     private final PlaceCatalogue catalogue;
     private final JdbcTemplate jdbc;
     private final TownGazetteer towns;
+    private final SpatialPlaces spatial;
 
-    public PlaceController(PlaceCatalogue catalogue, JdbcTemplate jdbc, TownGazetteer towns) {
+    public PlaceController(PlaceCatalogue catalogue, JdbcTemplate jdbc, TownGazetteer towns, SpatialPlaces spatial) {
+        this.spatial = spatial;
         this.towns = towns;
         this.catalogue = catalogue;
         this.jdbc = jdbc;
@@ -85,7 +87,19 @@ public class PlaceController {
         Set<String> cats = categories == null || categories.isBlank()
                 ? Set.of()
                 : new HashSet<>(Arrays.asList(categories.split(",")));
-        return catalogue.index(destination).nearby(lat, lon, radiusKm, cats, limit).stream()
+        var index = catalogue.index(destination);
+        if (spatial.available()) {
+            if (!(radiusKm > 0) || radiusKm > 200)
+                throw ApiException.badRequest("BAD_RADIUS", "radiusKm must be in (0, 200]");
+            String slug =
+                    destination == null || destination.isBlank() ? PlaceCatalogue.DEFAULT_DESTINATION : destination;
+            // PostGIS finds the ids (GiST index); the summaries come from the same in-memory catalogue.
+            return spatial.within(slug, lat, lon, radiusKm, cats, limit).stream()
+                    .filter(h -> index.get(h.id()) != null)
+                    .map(h -> new NearbyPlace(index.get(h.id()), Math.round(h.distanceKm() * 1000) / 1000.0))
+                    .toList();
+        }
+        return index.nearby(lat, lon, radiusKm, cats, limit).stream()
                 .map(n -> new NearbyPlace(n.place(), Math.round(n.distanceKm() * 1000) / 1000.0))
                 .toList();
     }

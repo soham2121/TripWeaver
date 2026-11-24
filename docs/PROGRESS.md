@@ -15,8 +15,8 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
 | 8 — Road-trip planner | Passed |
 | 9 — Itinerary UI and editing | Passed |
 | 10 — Sharing and collaboration | Passed |
-| 11 — Optional enrichment | Not started |
-| 12 — Benchmarks and audit | Not started |
+| 11 — No-Google-dependency verification | Passed |
+| 12 — Benchmarks and audit | In progress (benchmarks done; complexity and licensing review open) |
 | 13 — Submission package | Not started |
 
 ---
@@ -34,7 +34,7 @@ Phase status and recent work. A phase is "passed" only when its acceptance gate 
   - `cd backend && mvn test` — backend tests (no Docker needed).
   - `cd frontend && npm install && npm run dev` — UI on :5173 (proxies `/api` to :8080).
   - `cd frontend && npm test` — frontend tests.
-- **Optional credentials:** `GOOGLE_PLACES_API_KEY` (Phase 11, optional). Core app needs none.
+- **Optional credentials:** none. (Originally `GOOGLE_PLACES_API_KEY`; Google Places dropped on 2026-11-24, D39.)
 - **Data providers and licence risks:** OSM via Geofabrik (ODbL: attribution, share-alike on derived DB); Google Places (optional, strict storage rules, no bulk storage); OpenFreeMap/OSM tiles (attribution, usage policy); OSRM (BSD, self-hosted); official tourism sites (field-level source URL + date).
 - **Secrets/raw data excluded:** `.gitignore` covers `.env*`, `data/raw/`, `data/processed/`.
 
@@ -427,3 +427,76 @@ Found, not fixed (needs a decision): nightlife places with no sourced opening ho
 - **Road trip updates.** Requested by the user; details to be agreed.
 - **Nightlife hours.** Places with no sourced hours can be scheduled in the morning (Viva Pub at 09:04). Proposed fix: evening-only hours, labelled as an estimate. Waiting on a decision.
 - **Re-test the app in the browser** after these fixes.
+
+## Supabase database and Google Places provider (2026-11-24)
+
+**Phase A — Supabase inspection and connection (passed, read-only).**
+- Project `TripWeaver` (ref `wtslfglvhmspwmjdwcfw`, region ap-southeast-2, PostgreSQL 17.12), reached through the Supabase CLI (`supabase link`, `supabase db query --linked`, Management API). No Supabase MCP server was available in this session.
+- Found: `public` empty; PostGIS 3.3.7 already in `extensions`; advisors clean; role `postgres` can create schemas.
+- The direct host is IPv6-only and unreachable from the dev network. The Session Pooler (`aws-1-ap-southeast-2.pooler.supabase.com:5432`) is reachable.
+- `application.yml` now reads `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` (fallback: local DB) and an optional `.env`. Hikari pool size 5.
+
+**Phase B — Migrations (passed locally; Supabase waits for the password).**
+- `V5__catalogue_constraints_and_external_refs.sql` (portable): confidence CHECKs; coordinate, duration and cost CHECKs; 10 missing foreign-key indexes; `external_place_references`.
+- `db/vendor/postgresql/V6__postgis_and_rls.sql`: PostGIS in `extensions`; generated `places.geog geography(Point,4326)` with a GiST index; RLS on every table with no policies; grants revoked from `anon`/`authenticated`.
+- `afterMigrate.sql` does the same for `flyway_schema_history`. Flyway holds a lock on that table during migrations, and altering it inside V6 deadlocked on the first try.
+- The local docker image is now `postgis/postgis:17-3.5-alpine` (same volume, data kept).
+- `scripts/verify-db.sql`: 8/8 checks true on the local database (11,475 places, 33 MB).
+
+**Phase C/D — Catalogue and OSM ingestion.** Already in place from Phase 3: Java `OsmExtractTool`, boundary filter, idempotent upsert by OSM id and an import report. Added live coverage by region × category to `GET /api/v1/destinations/{slug}/coverage` (`byRegionAndCategory`, counted from the database).
+
+**Phase E — Curated metadata.** The format is unchanged: `data/curated/<slug>-curated.json`, with source URL, confidence and verifiedAt per field. No new curated facts were added in this round; unknowns stay unknown.
+
+**Phase F — Backend integration.** `SpatialPlaces`: `/places/nearby` uses `ST_DWithin` on the GiST index when PostGIS is present (EXPLAIN shows an index scan). Without PostGIS (H2 tests) it uses the in-memory index. Ranking and all assessed algorithms are unchanged.
+
+**Phase G — Google Places (optional).**
+- `external/GooglePlacesClient`: Places API (New), field masks, key only in a header, 4 s timeout.
+- `PlaceEnrichmentService`: feature flag, daily limit, place-ID-only storage, 429 and 502 errors.
+- `GET /api/v1/places/{id}/enrichment`, rate-limited per IP.
+- Frontend `GoogleDetails`: loads only on click; shows the "Google Maps" attribution, the review author's name, photo and profile link, and the review link; not drawn on the map.
+
+**Phase H — Checks run.**
+- Backend `./mvnw test`: 220 run, 0 failures, including 9 new enrichment tests against a local stub server. `spotless:check` clean.
+- Frontend `vitest run`: 37 passed (3 new). `tsc -b` clean. `oxlint`: 3 warnings, all there before this work.
+
+**Supabase run (same day).** The Sydney project was empty and was deleted at the owner's request. It was replaced by `TripWeaver` in ap-south-1 (Mumbai), ref `ddwdxesatvvlaxungxxb`, created with the CLI; its password was generated locally and written only to `.env`. The backend migrated V1–V6 through the Session Pooler (`aws-1-ap-south-1.pooler.supabase.com`) and imported goa (5,192) and konkan (6,283). `verify-db.sql`: 8/8 true, 35 MB. Advisors: no WARN or ERROR; INFO only (`rls_enabled_no_policy`, intended per D37; `unused_index` on a new database). `/places/nearby` answered from Supabase PostGIS.
+
+**Superseded the same day:** the Google Places provider (Phase G) was removed when Google Places went out of scope (D39). It was never committed or used with a real key.
+
+## Phase 11 report — No-Google-dependency verification (passed, 2026-11-24)
+
+The phase replaced "Optional external enrichment" after Google Places went out of scope (D39).
+
+| Check | Evidence |
+|---|---|
+| No Google API in code | `NoGoogleDependencyTest` (backend, 3 tests): no Google API host, SDK, key setting or header in `src/main` outside migration history; no Google dependency in `pom.xml`; the only `google.com/` reference is `NavigationLinks`. `src/test/noGoogle.test.ts` (frontend, 2 tests): same for `src` and `package.json` |
+| No Google content stored | `scripts/verify-db.sql` check "no Google content stored (D39)": true locally and on Supabase |
+| Runs without a key | No Google setting exists in `application.yml` or `.env.example`. The backend started against Supabase and planned a 2-day Goa trip; the response has no Google text besides the directions links |
+| Discovery uses the catalogue | Search, autocomplete, nearby (PostGIS) and details read only TripWeaver tables |
+| Map | Chrome check: `/plan?demo=goa-beach-weekend` drew OpenFreeMap tiles, the OSRM route and numbered stops, with "© OpenStreetMap" attribution. The page made network requests to `localhost` and `tiles.openfreemap.org` only. One OpenFreeMap font file returned 404 (cosmetic; it existed before). Style URL configurable: `VITE_MAP_STYLE_URL` |
+| Routing | Live: `travelProvider = OSRM`. Off: `ItineraryApiTest` and the other API tests run with `osrm-url: ""` and get labelled estimates plus the "Road routing unavailable" notice (D40) |
+| Navigation | `NavigationLinksTest` (3): `api=1` URLs without credentials, split at the waypoint limit |
+| Core planning with all external services off | All 216 backend tests run with no OSRM, no network and in-memory H2 |
+
+## Phase 12 progress — Benchmarks (2026-11-24)
+
+- `AlgorithmBenchmarks`: Quickselect vs sort (1K–1M); Set Cover lazy heap vs full greedy (20–500 candidates × U 20/60), plus greedy vs exact and vs cheapest-first; heap vs linear scan (1K–500K ops); Double-Tree vs Nearest-Neighbour vs Held–Karp (10–200 stops), with the metric check timed separately.
+- Each pair is checked for identical output (or the 2× bound) before timing. Raw CSVs are in `benchmark-results/raw/`, and charts in `docs/benchmarks/*.svg` come from `scripts/benchmark/plot.mjs`.
+- Honest findings, written up in `BENCHMARKS.md`:
+  - Lazy greedy does 3–11× fewer gain evaluations but is slower in wall-clock time at small universes.
+  - The heap loses to a scan at 1K operations.
+  - Nearest-Neighbour gives shorter tours than Double-Tree on random points, but has no guarantee.
+  - Double-Tree time is dominated by its O(n³) metric check.
+- **Still open for Phase 12:** check that complexity notes match the code; review the licensing and provider documentation once more.
+
+## Planner fixes (2026-11-24)
+
+- **Late lunch:** a food stop opening in the evening, or a run of food stops, could push the lunch break to the next non-food stop (seen at 18:27). Breaks now fall due when their window opens, or up to 30 min early if the next stop would overrun the window. A food stop counts as the meal only if its projected start (after opening hours) falls inside the window. A break more than 60 min past its window is dropped and never placed late. Test: `lunchIsTakenInItsWindowEvenWhenTheNextStopIsALateOpeningRestaurant` (failed with lunch at 19:15 before the fix). Live: six seeds of a 2-day Goa nightlife plan put lunch at 13:15–14:08.
+- **Club hours:** bars and clubs whose hours cannot be parsed now get the labelled 20:00–03:00 estimate, as bars with no hours already did. Before, they were treated as open all day. Test: `clubWithUnparseableHoursGetsTheEveningEstimateNotAnAfternoonSlot` (failed at 19:06 before).
+- **Build target:** Java 21 (D42). Backend: 216 tests pass. Frontend: 36 tests pass; `tsc`, `prettier` and the production build are clean.
+
+## Owner answers (2026-11-24)
+
+- **Q1 → D45:** solo project with the teacher's permission. `docs/CONTRIBUTIONS.md` written.
+- **Q7 → D46:** `V7__drop_google_leftovers.sql` applied. Both objects were checked empty first. Applied on the local database (via a one-off run) and on Supabase (on the backend restart). `verify-db.sql`: 8/8 true on both, Flyway at V7. Backend tests: 216/216.
+- **UI refresh (D47):** new colour system, fonts, route-rail timelines, skeleton loading, View Transitions; mobile overflow fixed on plan, road trip and discover. Checked in Chrome at desktop and 390 px. Frontend 36/36 tests, `tsc` and `prettier` clean, production build ok, impeccable detector clean.

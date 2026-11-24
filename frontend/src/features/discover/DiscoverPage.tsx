@@ -59,7 +59,7 @@ export function DiscoverPage() {
   )
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] [&>*]:min-w-0">
       <section className="min-w-0 space-y-3">
         <form
           onSubmit={(e) => {
@@ -77,7 +77,7 @@ export function DiscoverPage() {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <select
               aria-label="Interest"
-              className="rounded border border-zinc-300 px-2 py-1"
+              className="field w-auto max-w-full min-w-0"
               value={filters.interest ?? ''}
               onChange={(e) => setFilters((f) => ({ ...f, interest: e.target.value || undefined }))}
             >
@@ -90,7 +90,7 @@ export function DiscoverPage() {
             </select>
             <select
               aria-label="Region"
-              className="rounded border border-zinc-300 px-2 py-1"
+              className="field w-auto max-w-full min-w-0"
               value={filters.region ?? ''}
               onChange={(e) => setFilters((f) => ({ ...f, region: e.target.value || undefined }))}
             >
@@ -118,14 +118,14 @@ export function DiscoverPage() {
                 Clear “{filters.q ?? label(filters.category ?? '')}” ✕
               </button>
             )}
-            <div className="ml-auto flex overflow-hidden rounded border border-zinc-300">
+            <div className="ml-auto flex overflow-hidden rounded-full bg-white p-0.5 ring-1 ring-zinc-300">
               {(['list', 'map'] as const).map((v) => (
                 <button
                   type="button"
                   key={v}
                   aria-pressed={view === v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1 ${view === v ? 'bg-teal-700 text-white' : 'bg-white'}`}
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${view === v ? 'bg-teal-700 text-white' : 'text-zinc-600 hover:text-zinc-900'}`}
                 >
                   {v === 'list' ? 'List' : 'Map'}
                 </button>
@@ -155,7 +155,7 @@ export function DiscoverPage() {
           <p className="text-sm text-zinc-600">No places match. Try a different filter.</p>
         )}
 
-        <ul className="divide-y divide-zinc-100 rounded border border-zinc-200 bg-white">
+        <ul className="divide-y divide-zinc-100 card">
           {items.map((p) => (
             <li key={p.id}>
               <button
@@ -187,7 +187,7 @@ export function DiscoverPage() {
         {status === 'loading' && <p className="text-sm text-zinc-500">Loading…</p>}
         {hasMore && status === 'idle' && (
           <button
-            className="rounded border border-zinc-300 px-3 py-1 text-sm"
+            className="btn-secondary py-1 text-sm"
             onClick={() => load(filters, items.length)}
           >
             Load more
@@ -195,7 +195,7 @@ export function DiscoverPage() {
         )}
       </section>
 
-      <aside className="rounded border border-zinc-200 bg-white lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
+      <aside className="card lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
         {selected ? (
           <PlaceDetailPanel placeId={selected} onClose={() => setSelected(null)} />
         ) : (
