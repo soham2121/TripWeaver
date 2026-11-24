@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
  * Parser for the common subset of the OSM {@code opening_hours} syntax: {@code 24/7}, rules separated by
  * {@code ;}, weekday ranges and lists ({@code Mo-Fr,Su}, wrap-around {@code Sa-Mo}), time lists
  * ({@code 11:00-14:30, 18:30-23:00}) and {@code off}/{@code closed}. Later rules replace earlier ones for the
- * days they name. {@code PH}/{@code SH} tokens are ignored. Closing after midnight is capped at 24:00 (the
- * planner schedules within one calendar day).
+ * days they name. {@code PH}/{@code SH} tokens are ignored. A window that closes after midnight runs into the
+ * next day (close above 1440), so a plan day that ends after midnight can use it.
  *
  * <p>Anything else (months, weeks, sunrise, open-ended {@code +}, comments) returns {@code null}: the hours are
  * then treated as unknown rather than guessed.
@@ -23,6 +23,7 @@ public final class OpeningHours {
     /** Open interval in minutes after midnight, close exclusive. */
     public record Window(int open, int close) {}
 
+    private static final int SMALL_HOURS_END = 6 * 60;
     private static final List<String> DAYS = List.of("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su");
     private static final Pattern TIME = Pattern.compile("(\\d{2}):(\\d{2})-(\\d{2}):(\\d{2})");
 
@@ -41,11 +42,21 @@ public final class OpeningHours {
      * -1 if none.
      */
     public int earliestStart(DayOfWeek d, int from, int minutes) {
-        for (Window w : windows(d)) {
-            int s = Math.max(from, w.open());
-            if (s + minutes <= w.close()) return s;
+        // Day d's windows, then the next day's small hours (before 06:00) shifted by 24 h, merged where they touch,
+        // so a plan day that ends after midnight can use them.
+        List<Window> all = new ArrayList<>(windows(d));
+        for (Window w : windows(d.plus(1)))
+            if (w.open() < SMALL_HOURS_END)
+                all.add(new Window(w.open() + 1440, Math.min(w.close(), SMALL_HOURS_END) + 1440));
+        int open = -1, close = -1;
+        for (Window w : all) {
+            if (w.open() > close) {
+                if (open >= 0 && Math.max(from, open) + minutes <= close) return Math.max(from, open);
+                open = w.open();
+            }
+            close = Math.max(close, w.close());
         }
-        return -1;
+        return open >= 0 && Math.max(from, open) + minutes <= close ? Math.max(from, open) : -1;
     }
 
     public static OpeningHours parse(String raw) {
@@ -107,7 +118,7 @@ public final class OpeningHours {
             int open = Integer.parseInt(t.group(1)) * 60 + Integer.parseInt(t.group(2));
             int close = Integer.parseInt(t.group(3)) * 60 + Integer.parseInt(t.group(4));
             if (open >= 1440 || close > 1440) return null;
-            if (close <= open) close = 1440; // closes after midnight
+            if (close <= open) close += 1440; // closes after midnight, on the next day
             out.add(new Window(open, close));
         }
         out.sort((x, y) -> Integer.compare(x.open(), y.open()));

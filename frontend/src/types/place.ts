@@ -58,11 +58,14 @@ export interface PlaceDetail {
 }
 
 export interface Suggestion {
-  type: 'PLACE' | 'CATEGORY' | 'INTEREST' | 'CUISINE' | 'NEIGHBOURHOOD' | 'REGION'
+  type: 'TOWN' | 'PLACE' | 'CATEGORY' | 'INTEREST' | 'CUISINE' | 'NEIGHBOURHOOD' | 'REGION'
   label: string
   value: string
   placeId: string | null
   detail: string
+  /** Set for TOWN. */
+  lat?: number | null
+  lon?: number | null
 }
 
 export interface Page<T> {

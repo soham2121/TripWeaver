@@ -17,6 +17,8 @@ import java.util.UUID;
  * @param dayEnd hard: no driving or visits after this time on any day
  * @param maxDetourMinutes added driving per detour (beyond the direct route)
  * @param maxTotalDetourMinutes added driving plus visit time over all detours
+ * @param drivingDays when 2 or more, the drive is split into this many days with a town stay at each split
+ * @param stayChoices night number to the town key the user picked from that night's town options
  */
 public record RoadTripRequest(
         Waypoint origin,
@@ -44,7 +46,9 @@ public record RoadTripRequest(
         Double accommodationPerNight,
         Double foodPerPersonPerDay,
         Set<UUID> avoid,
-        Long seed) {
+        Long seed,
+        Integer drivingDays,
+        Map<Integer, String> stayChoices) {
 
     /** A fixed stop: coordinates or a catalogue place. {@code overnight} ends the day there. */
     public record Waypoint(String name, Double lat, Double lon, UUID placeId, Boolean overnight, Integer stayMinutes) {}
@@ -66,5 +70,6 @@ public record RoadTripRequest(
         partySize = partySize == null ? 1 : partySize;
         transport = transport == null ? TransportMode.CAR : transport;
         avoid = avoid == null ? Set.of() : Set.copyOf(avoid);
+        stayChoices = stayChoices == null ? Map.of() : Map.copyOf(stayChoices);
     }
 }

@@ -233,10 +233,12 @@ function DayView({
     ],
     [day, base],
   )
+  // Times before the day's start are after midnight on a day that ends late; sort them last.
+  const afterStart = (t: string) => (t < day.start ? '1' : '0') + t
   const entries: Entry[] = [
     ...day.stops.map((s) => ({ at: s.start, stop: s })),
     ...day.meals.map((m) => ({ at: m.start, meal: m })),
-  ].sort((a, b) => a.at.localeCompare(b.at))
+  ].sort((a, b) => afterStart(a.at).localeCompare(afterStart(b.at)))
   const o = day.ordering
   return (
     <div className="grid gap-3 xl:grid-cols-2">

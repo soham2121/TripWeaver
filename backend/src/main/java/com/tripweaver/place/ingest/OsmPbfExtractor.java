@@ -274,6 +274,44 @@ public final class OsmPbfExtractor {
         return out;
     }
 
+    /** Every named node with {@code place} in {@code kinds}, in the whole file (one pass, node tags only). */
+    public static List<OsmExtract.Feature> places(Path pbf, Set<String> kinds) throws IOException {
+        List<OsmExtract.Feature> out = new ArrayList<>();
+        run(pbf, new Handler() {
+            @Override
+            protected void parseDense(Osmformat.DenseNodes d) {
+                long id = 0, lat = 0, lon = 0;
+                int kv = 0;
+                for (int i = 0; i < d.getIdCount(); i++) {
+                    id += d.getId(i);
+                    lat += d.getLat(i);
+                    lon += d.getLon(i);
+                    Map<String, String> tags = new HashMap<>();
+                    if (d.getKeysValsCount() > 0) {
+                        while (d.getKeysVals(kv) != 0) {
+                            tags.put(getStringById(d.getKeysVals(kv)), getStringById(d.getKeysVals(kv + 1)));
+                            kv += 2;
+                        }
+                        kv++;
+                    }
+                    if (tags.containsKey("name") && kinds.contains(tags.getOrDefault("place", "")))
+                        out.add(new OsmExtract.Feature("node", id, parseLat(lat), parseLon(lon), tags));
+                }
+            }
+
+            @Override
+            protected void parseNodes(List<Osmformat.Node> nodes) {
+                for (Osmformat.Node n : nodes) {
+                    Map<String, String> tags = tags(n.getKeysList(), n.getValsList());
+                    if (tags.containsKey("name") && kinds.contains(tags.getOrDefault("place", "")))
+                        out.add(new OsmExtract.Feature(
+                                "node", n.getId(), parseLat(n.getLat()), parseLon(n.getLon()), tags));
+                }
+            }
+        });
+        return out;
+    }
+
     private static void run(Path pbf, Handler h) throws IOException {
         try (InputStream in = new BufferedInputStream(Files.newInputStream(pbf), 1 << 20)) {
             new BlockInputStream(in, h).process();

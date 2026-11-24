@@ -12,6 +12,8 @@ interface Props {
   destinations?: string[]
   /** Only suggest individual places (no categories or regions). */
   placesOnly?: boolean
+  /** Also suggest cities and towns (e.g. Ratnagiri, Kolhapur), listed first: for location pickers. */
+  towns?: boolean
   label?: string
 }
 
@@ -23,6 +25,7 @@ export function Autocomplete({
   placeholder,
   destinations = ['goa'],
   placesOnly = false,
+  towns = false,
   label: aria = 'Search places',
 }: Props) {
   const dests = destinations.join(',')
@@ -39,11 +42,14 @@ export function Autocomplete({
     }
     let live = true
     const t = setTimeout(() => {
-      Promise.all(dests.split(',').map((d) => placesApi.autocomplete(q, 8, d)))
+      Promise.all([
+        towns ? placesApi.towns(q).catch(() => []) : Promise.resolve([]),
+        ...dests.split(',').map((d) => placesApi.autocomplete(q, 8, d)),
+      ])
         .then((rs) =>
           rs
             .flat()
-            .filter((x) => !placesOnly || x.type === 'PLACE')
+            .filter((x) => !placesOnly || x.type === 'PLACE' || x.type === 'TOWN')
             .filter(
               (x, i, a) => a.findIndex((y) => y.type === x.type && y.value === x.value) === i,
             ),
@@ -55,7 +61,7 @@ export function Autocomplete({
       live = false
       clearTimeout(t)
     }
-  }, [value, dests, placesOnly])
+  }, [value, dests, placesOnly, towns])
 
   const pick = (s: Suggestion) => {
     setOpen(false)
@@ -109,7 +115,7 @@ export function Autocomplete({
             >
               <span className="font-medium">{s.label}</span>{' '}
               <span className="text-xs text-zinc-500">
-                {s.type === 'PLACE' ? label(s.detail) : s.type.toLowerCase()}
+                {s.type === 'PLACE' || s.type === 'TOWN' ? label(s.detail) : s.type.toLowerCase()}
               </span>
             </li>
           ))}

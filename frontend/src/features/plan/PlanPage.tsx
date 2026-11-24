@@ -126,6 +126,11 @@ export function PlanPage() {
   }
 
   const pickBase = async (s: Suggestion) => {
+    if (s.type === 'TOWN' && s.lat != null && s.lon != null) {
+      set('base', { name: s.label, lat: s.lat, lon: s.lon })
+      setBaseQuery(s.label)
+      return
+    }
     if (s.type !== 'PLACE' || !s.placeId) return
     try {
       const d = await placesApi.get(s.placeId)
@@ -216,8 +221,9 @@ export function PlanPage() {
                 onChange={setBaseQuery}
                 onPick={(s) => void pickBase(s)}
                 placesOnly
+                towns
                 label="Stay near"
-                placeholder="Search a place for your base"
+                placeholder="Search a town or place for your base"
               />
               <p className="text-xs text-zinc-500">
                 Base: {form.base.name}
@@ -264,6 +270,11 @@ export function PlanPage() {
                   onChange={(e) => set('dayEnd', e.target.value)}
                   className={input}
                 />
+                <span className="text-xs text-zinc-500">
+                  {form.dayEnd <= form.dayStart
+                    ? 'Next morning (latest 06:00)'
+                    : 'An end before the start means after midnight'}
+                </span>
               </label>
             </div>
           </div>

@@ -63,6 +63,11 @@ public final class ItineraryPlanner {
     static final int LUNCH_FROM = 12 * 60 + 30, LUNCH_LATE = 14 * 60 + 30, DINNER_FROM = 19 * 60 + 30;
     static final int MAX_FOOD_STOPS_PER_DAY = 2, MEAL_EARLY = 30, POOL_PER_DAY = 40, QUOTA_PER_DAY = 3;
     static final Set<String> FOOD_CATEGORIES = Set.of("restaurant", "cafe", "fast_food");
+    static final Set<String> NIGHTLIFE_CATEGORIES = Set.of("bar", "nightclub");
+    /** Assumed hours for bars and clubs with no sourced hours, labelled as an estimate. */
+    static final PlaceHours NIGHTLIFE_ESTIMATE = new PlaceHours("20:00-03:00", "CURATED_ESTIMATE");
+
+    static final int LATEST_NIGHT_END = 6 * 60;
     static final ZoneId TRIP_ZONE = ZoneId.of("Asia/Kolkata");
     static final String CURRENCY = "INR";
     static final String DISCLAIMER = "Day allocation is a greedy insertion heuristic with a bounded repair pass. It"
@@ -132,8 +137,15 @@ public final class ItineraryPlanner {
     }
 
     private static void checkWindow(LocalTime s, LocalTime e) {
-        if (!s.isBefore(e) || s.until(e, java.time.temporal.ChronoUnit.MINUTES) < 60)
+        if (endMinutes(s, e) - minutes(s) < 60)
             throw ApiException.badRequest("BAD_DAY_WINDOW", "Day end must be at least 60 minutes after day start");
+        if (endMinutes(s, e) > 1440 + LATEST_NIGHT_END)
+            throw ApiException.badRequest("BAD_DAY_WINDOW", "A day ending after midnight must end by 06:00");
+    }
+
+    /** Day end in minutes after the day's midnight: an end at or before the start means the next morning. */
+    static int endMinutes(LocalTime start, LocalTime end) {
+        return minutes(end) + (end.isAfter(start) ? 0 : 1440);
     }
 
     // ---------------------------------------------------------------- model
@@ -289,7 +301,7 @@ public final class ItineraryPlanner {
                 LocalTime e = o != null && o.end() != null ? o.end() : req.dayEnd();
                 Pace pace = o != null && o.pace() != null ? o.pace() : req.pace();
                 boolean back = o != null && o.returnToBase() != null ? o.returnToBase() : req.returnToBase();
-                days.add(new DayCtx(i, start.plusDays(i - 1), minutes(s), minutes(e), pace, back));
+                days.add(new DayCtx(i, start.plusDays(i - 1), minutes(s), endMinutes(s, e), pace, back));
                 plan.add(new ArrayList<>());
                 sims.add(simulate(days.getLast(), List.of()));
             }
@@ -318,7 +330,7 @@ public final class ItineraryPlanner {
                     .base(req.baseLat(), req.baseLon())
                     .travelMonth(start.getMonthValue())
                     .maxEntryCostPerPerson(req.maxEntryCostPerPerson())
-                    .dayMinutes(minutes(req.dayEnd()) - minutes(req.dayStart()))
+                    .dayMinutes(endMinutes(req.dayStart(), req.dayEnd()) - minutes(req.dayStart()))
                     .mustVisit(must)
                     .avoid(req.avoid())
                     .requireWheelchair(req.requireWheelchair())
@@ -352,7 +364,7 @@ public final class ItineraryPlanner {
                                 pick.place(),
                                 kind,
                                 pick.score().total() + 1,
-                                f == null ? null : minutes(f.start()),
+                                f == null ? null : onDay(f.day(), f.start()),
                                 f == null ? null : f.minutes(),
                                 reason));
             }
@@ -373,7 +385,15 @@ public final class ItineraryPlanner {
         Visit visit(PlaceSummary p, String kind, double value, Integer fixedStart, Integer fixedMin, String why) {
             Set<String> covers = new TreeSet<>(p.interests());
             covers.retainAll(req.interests().keySet());
-            return new Visit(p, kind, value, covers, fixedStart, fixedMin, hours.apply(p.id()), cost(p), why);
+            PlaceHours ph = hours.apply(p.id());
+            if (ph == null && NIGHTLIFE_CATEGORIES.contains(p.primaryCategory())) ph = NIGHTLIFE_ESTIMATE;
+            return new Visit(p, kind, value, covers, fixedStart, fixedMin, ph, cost(p), why);
+        }
+
+        /** A clock time on trip day {@code day}: before the day's start means after midnight on a late day. */
+        int onDay(int day, LocalTime t) {
+            DayCtx d = days.get(day - 1);
+            return minutes(t) < d.start() && d.end() > 1440 ? minutes(t) + 1440 : minutes(t);
         }
 
         Itinerary.Money cost(PlaceSummary p) {
@@ -421,6 +441,7 @@ public final class ItineraryPlanner {
                 while (!food
                         && !pendingMeals.isEmpty()
                         && t >= (int) pendingMeals.getFirst()[1]) {
+                    if (t + pace.mealMinutes() > d.end()) return Sim.fail("day time window");
                     String label = (String) pendingMeals.removeFirst()[0];
                     meals.add(new Itinerary.Meal(label, time(t), time(t + pace.mealMinutes()), null));
                     t += pace.mealMinutes();
@@ -1015,7 +1036,9 @@ public final class ItineraryPlanner {
                 for (int i = 0; i < s.stops().size(); i++) {
                     Timed t = s.stops().get(i);
                     Visit v = t.v();
-                    String status = v.ph == null ? "UNKNOWN" : v.oh == null ? "UNPARSED" : "CHECKED";
+                    String status = v.ph == null
+                            ? "UNKNOWN"
+                            : v.oh == null ? "UNPARSED" : v.ph == NIGHTLIFE_ESTIMATE ? "ESTIMATED" : "CHECKED";
                     if (status.equals("UNPARSED")) unparsed++;
                     if (status.equals("UNKNOWN")) unknownHours++;
                     if (v.cost.unknown()) dUnknown = true;
@@ -1181,8 +1204,9 @@ public final class ItineraryPlanner {
         return t.getHour() * 60 + t.getMinute();
     }
 
+    /** Clock time; minutes past 24:00 (a day that ends after midnight) wrap to the next morning. */
     static LocalTime time(int minutes) {
-        return LocalTime.of(minutes / 60, minutes % 60);
+        return LocalTime.MIDNIGHT.plusMinutes(minutes);
     }
 
     static double round(double v) {

@@ -60,7 +60,7 @@ class ItineraryPlannerTest {
                 name,
                 BLAT + dLat,
                 BLON + dLon,
-                interest.equals("food") ? "restaurant" : interest,
+                interest.equals("food") ? "restaurant" : interest.equals("nightlife") ? "bar" : interest,
                 Set.of(interest),
                 Set.of(interest),
                 region,
@@ -312,6 +312,39 @@ class ItineraryPlannerTest {
         assertEquals(Pace.RELAXED, mixed.days().get(0).pace());
         assertEquals(Pace.PACKED, mixed.days().get(1).pace());
         assertEquals(LocalTime.of(21, 0), mixed.days().get(1).end());
+    }
+
+    @Test
+    void lateDinnerBreakNeverRunsPastMidnight() {
+        // Dinner is still pending when a late stop is tried; a break from 23:xx used to reach 24:00 and crash.
+        cluster(6, "beach", 0.005);
+        Itinerary it = plan("\"startDate\":\"" + MONDAY + "\",\"days\":2,\"interests\":{\"beach\":5},"
+                + "\"dayStart\":\"09:00\",\"dayEnd\":\"23:59\","
+                + "\"dayOverrides\":[{\"day\":2,\"start\":\"22:50\",\"pace\":\"RELAXED\"}]");
+        assertTimelinesFit(it);
+    }
+
+    @Test
+    void dayCanEndAfterMidnightAndBarsGetEstimatedEveningHours() {
+        PlaceSummary pub = add("Night Pub", "nightlife", 0.004, 0, 120, 150);
+        cluster(4, "beach", 0.006);
+        Itinerary it = plan("\"startDate\":\"" + FRIDAY + "\",\"interests\":{\"nightlife\":5,\"beach\":3},"
+                + "\"mustVisit\":[\"" + pub.id() + "\"],\"dayStart\":\"11:30\",\"dayEnd\":\"03:00\"");
+        Itinerary.Day d = it.days().getFirst();
+        assertEquals(LocalTime.of(3, 0), d.end());
+        Itinerary.Stop s = d.stops().stream()
+                .filter(x -> x.place().id().equals(pub.id()))
+                .findFirst()
+                .orElseThrow();
+        // Category "bar" without sourced hours: open 20:00-03:00, labelled an estimate.
+        assertFalse(s.start().isBefore(LocalTime.of(20, 0)) && s.start().isAfter(LocalTime.of(3, 0)), s.start() + "");
+        assertEquals("ESTIMATED", s.hours().status());
+        assertEquals("CURATED_ESTIMATE", s.hours().confidence());
+
+        assertEquals(
+                "BAD_DAY_WINDOW",
+                fails("\"dayStart\":\"20:00\",\"dayEnd\":\"07:00\",\"interests\":{\"beach\":5}")
+                        .errorCode());
     }
 
     @Test

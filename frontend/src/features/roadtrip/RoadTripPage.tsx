@@ -32,6 +32,8 @@ interface Form {
   departureTime: string
   arriveBy: string
   maxDrivingHoursPerDay: number
+  drivingDays: string
+  stayChoices: Record<string, string>
   weights: Record<string, number>
   maxDetourMinutes: number
   maxDetours: number
@@ -58,6 +60,8 @@ const DEFAULT: Form = {
   departureTime: '07:00',
   arriveBy: '',
   maxDrivingHoursPerDay: 7,
+  drivingDays: '',
+  stayChoices: {},
   weights: {},
   maxDetourMinutes: 45,
   maxDetours: 3,
@@ -89,6 +93,8 @@ function toRequest(f: Form): RoadTripRequest {
     departureTime: f.departureTime,
     arriveBy: f.arriveBy || undefined,
     maxDrivingHoursPerDay: f.maxDrivingHoursPerDay,
+    drivingDays: num(f.drivingDays),
+    stayChoices: f.stayChoices,
     interests: f.weights,
     maxDetourMinutes: f.maxDetourMinutes,
     maxDetours: f.maxDetours,
@@ -103,6 +109,8 @@ function toRequest(f: Form): RoadTripRequest {
 }
 
 async function resolve(s: Suggestion): Promise<Waypoint | null> {
+  if (s.type === 'TOWN' && s.lat != null && s.lon != null)
+    return { name: s.label, lat: s.lat, lon: s.lon }
   if (s.type !== 'PLACE' || !s.placeId) return null
   const d = await placesApi.get(s.placeId)
   return { name: d.summary.name, placeId: s.placeId, lat: d.summary.lat, lon: d.summary.lon }
@@ -137,6 +145,7 @@ function EndPicker({
         }
         destinations={CATALOGUES}
         placesOnly
+        towns
         label={title}
         placeholder={value.name}
       />
@@ -283,6 +292,7 @@ export function RoadTripPage() {
             }
             destinations={CATALOGUES}
             placesOnly
+            towns
             label="Add a stop"
             placeholder="Add a stop on the way"
           />
@@ -320,6 +330,22 @@ export function RoadTripPage() {
               onChange={(e) => set('maxDrivingHoursPerDay', Number(e.target.value) || 7)}
               className={input}
             />
+          </label>
+          <label>
+            Driving days (optional)
+            <input
+              type="number"
+              min={1}
+              max={14}
+              value={form.drivingDays}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, drivingDays: e.target.value, stayChoices: {} }))
+              }
+              className={input}
+            />
+            <span className="text-xs text-zinc-500">
+              2 or more: suggests towns to stay in between
+            </span>
           </label>
           <label>
             Arrive by (optional)
@@ -428,7 +454,14 @@ export function RoadTripPage() {
               result={result}
               defaultTitle={`${lastRequest.origin.name} to ${lastRequest.destination.name}`}
             />
-            <RoadTripView trip={result} />
+            <RoadTripView
+              trip={result}
+              onPickStay={(night, key) => {
+                const f = { ...form, stayChoices: { ...form.stayChoices, [night]: key } }
+                setForm(f)
+                void plan(f)
+              }}
+            />
           </div>
         )}
       </section>
@@ -439,7 +472,14 @@ export function RoadTripPage() {
 const dt = (s: string) => s.replace('T', ' ').slice(0, 16)
 const hours = (m: number) => `${Math.floor(m / 60)} h ${m % 60} min`
 
-export function RoadTripView({ trip }: { trip: RoadTrip }) {
+export function RoadTripView({
+  trip,
+  onPickStay,
+}: {
+  trip: RoadTrip
+  /** Re-plans with this town as the night's stay; absent where the trip is read-only. */
+  onPickStay?: (night: number, townKey: string) => void
+}) {
   const points = useMemo<MapPoint[]>(() => {
     const p: MapPoint[] = []
     trip.segments.forEach((s, i) => {
@@ -512,6 +552,53 @@ export function RoadTripView({ trip }: { trip: RoadTrip }) {
         </section>
       </div>
 
+      {!!trip.stayOptions?.length && (
+        <section className="rounded border border-zinc-200 bg-white p-3">
+          <h2 className="mb-1 font-medium">Where to stay on the way</h2>
+          <p className="mb-2 text-xs text-zinc-500">
+            Towns with places to stay, ranked by closeness to an even split of the drive, the extra
+            driving to reach them, and how much there is to do. Places to stay are OpenStreetMap
+            listings: availability and price unknown.
+          </p>
+          {trip.stayOptions.map((n) => (
+            <div key={n.night} className="mb-2">
+              <p>
+                Night {n.night} · aim: {hours(n.targetDriveMinutes)} of driving from the start
+              </p>
+              <ul className="ml-4 space-y-2">
+                {n.options.map((o) => (
+                  <li key={o.key}>
+                    <span className={o.chosen ? 'font-medium' : ''}>{o.town}</span>:{' '}
+                    {hours(o.driveFromStartMinutes)} from the start
+                    {o.detourMinutes > 0 && `, +${o.detourMinutes} min off the route`}
+                    <div className="text-xs text-zinc-600">
+                      {o.sights} thing(s) to do within 15 km
+                      {o.topSights.length > 0 && `: ${o.topSights.join(', ')}`}
+                    </div>
+                    <div className="text-xs text-zinc-600">
+                      {o.stays} place(s) to stay within 5 km: {o.stayNames.join(', ')}
+                    </div>
+                    {o.chosen ? (
+                      <span className="ml-2 text-xs text-teal-700">chosen</span>
+                    ) : (
+                      onPickStay && (
+                        <button
+                          type="button"
+                          onClick={() => onPickStay(n.night, o.key)}
+                          className="ml-2 rounded px-2 py-0.5 text-xs ring-1 ring-zinc-300 hover:bg-zinc-100"
+                        >
+                          Stay here
+                        </button>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+
       {trip.days.map((d) => (
         <DayCard key={d.day} day={d} />
       ))}
@@ -554,8 +641,12 @@ function DayCard({ day }: { day: RoadTripDay }) {
       </ol>
       {o && (
         <p className="mt-1">
-          {o.kind === 'SUGGESTED' ? 'Suggested stay' : 'Your stay'}: {o.name}{' '}
-          <ConfidenceBadge confidence={o.confidence as Confidence} />{' '}
+          {o.kind === 'SUGGESTED'
+            ? 'Suggested stay'
+            : o.kind === 'TOWN'
+              ? 'Town stay'
+              : 'Your stay'}
+          : {o.name} <ConfidenceBadge confidence={o.confidence as Confidence} />{' '}
           <span className="text-xs text-zinc-500">{o.note}</span>
         </p>
       )}

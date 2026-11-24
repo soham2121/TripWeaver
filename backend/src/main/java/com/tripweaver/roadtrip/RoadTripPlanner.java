@@ -6,6 +6,7 @@ import com.tripweaver.common.ApiException;
 import com.tripweaver.common.Geo;
 import com.tripweaver.place.PlaceHours;
 import com.tripweaver.place.PlaceSummary;
+import com.tripweaver.place.Town;
 import com.tripweaver.planning.Itinerary;
 import com.tripweaver.planning.OpeningHours;
 import com.tripweaver.recommendation.RecommendationEngine;
@@ -51,7 +52,8 @@ import org.springframework.http.HttpStatus;
  *       Double-Tree open path (no bound claimed for open paths).
  *   <li>Day simulation: driving in chunks with rest breaks after {@code maxContinuousDrivingMinutes}, a lunch break,
  *       visits, waypoint stays, user overnight waypoints, and suggested overnight stops (OSM-listed accommodation
- *       near the route that makes the most progress within the day's driving and time limits).
+ *       near the route that makes the most progress within the day's driving and time limits). With {@code
+ *       drivingDays}, town stays split the direct drive evenly first (see {@code planStays}).
  *   <li>Repair: detours are optional, so the lowest-ranked detour is dropped while the plan is infeasible or needs
  *       more days than the plan without detours. The plan without detours must itself be feasible, otherwise the
  *       trip is infeasible with reasons.
@@ -65,6 +67,19 @@ public final class RoadTripPlanner {
     static final double HOTEL_CORRIDOR_KM = 5, ENDPOINT_EXCLUSION_KM = 3;
     static final int MAX_CANDIDATES_PER_SEGMENT = 60, HOTEL_BUCKETS = 20, HOTELS_PER_BUCKET = 3;
     static final int MAX_POLYLINE_POINTS = 400;
+    /** Town stays: town this far off the route, stays and things to do within these radii, towns shown per night. */
+    static final double TOWN_CORRIDOR_KM = 25, TOWN_STAY_RADIUS_KM = 5, TOWN_SIGHTS_RADIUS_KM = 15;
+
+    static final int TOWN_OPTIONS = 3, TOWN_MAX_DETOUR_MINUTES = 60;
+    /** Catalogue activities that do not count as things to do in a town: eating places and small parks. */
+    static final Set<String> NOT_THINGS_TO_DO = Set.of("restaurant", "cafe", "fast_food", "park");
+    /**
+     * Things to do are worth up to TOWN_SIGHTS_WEIGHT minutes of driving off the midpoint, reached at TOWN_SIGHTS_FULL
+     * things (a cap, so big cities do not swamp the midpoint). ponytail: hand-tuned on Mumbai–Goa; revisit with
+     * more corridors.
+     */
+    static final double TOWN_SIGHTS_WEIGHT = 90, TOWN_SIGHTS_FULL = 20;
+
     static final ZoneId TRIP_ZONE = ZoneId.of("Asia/Kolkata");
     static final String DISCLAIMER = "Road-trip planning is a heuristic: fixed waypoints keep their order, detours are"
             + " optional and bounded, and overnight stops are suggestions from OpenStreetMap listings. Routed travel"
@@ -74,8 +89,18 @@ public final class RoadTripPlanner {
 
     public static RoadTrip plan(
             List<PlaceSummary> places, Function<UUID, PlaceHours> hours, TravelProvider travel, RoadTripRequest req) {
+        return plan(places, List.of(), hours, travel, req);
+    }
+
+    /** @param towns gazetteer cities and towns: candidates for town stays when {@code drivingDays} is 2 or more */
+    public static RoadTrip plan(
+            List<PlaceSummary> places,
+            List<Town> towns,
+            Function<UUID, PlaceHours> hours,
+            TravelProvider travel,
+            RoadTripRequest req) {
         validate(req);
-        return new Run(places, hours, travel, req).execute();
+        return new Run(places, towns, hours, travel, req).execute();
     }
 
     // ---------------------------------------------------------------- validation
@@ -113,6 +138,8 @@ public final class RoadTripPlanner {
                 || r.maxTotalDetourMinutes() > 600)
             throw ApiException.badRequest("BAD_DETOUR_LIMIT", "Detour limits out of range");
         if (r.partySize() < 1 || r.partySize() > 20) throw ApiException.badRequest("BAD_PARTY", "partySize 1..20");
+        if (r.drivingDays() != null && (r.drivingDays() < 1 || r.drivingDays() > 14))
+            throw ApiException.badRequest("BAD_DAYS", "drivingDays must be 1..14");
         for (Double v :
                 new Double[] {r.fuelPricePerLitre(), r.tollsTotal(), r.accommodationPerNight(), r.foodPerPersonPerDay()
                 }) if (v != null && !(v >= 0)) throw ApiException.badRequest("BAD_COST", "Costs must be non-negative");
@@ -135,6 +162,8 @@ public final class RoadTripPlanner {
         String reason = "";
         Set<String> covers = Set.of();
         double score;
+        Town town; // TOWN nodes only
+        List<PlaceSummary> stays = List.of(), sights = List.of();
 
         Node(String name, String kind, double lat, double lon, PlaceSummary place, boolean overnight, int stay) {
             this.name = name;
@@ -159,7 +188,7 @@ public final class RoadTripPlanner {
         /** Matrix row per node. Per segment, because waypoints are shared by neighbouring segments. */
         final Map<Node, Integer> ix = new IdentityHashMap<>();
 
-        final List<Node> candidates = new ArrayList<>(), hotels = new ArrayList<>();
+        final List<Node> candidates = new ArrayList<>(), hotels = new ArrayList<>(), towns = new ArrayList<>();
         TravelMatrix m;
 
         int t(Node u, Node v) {
@@ -231,12 +260,24 @@ public final class RoadTripPlanner {
         final List<Seg> segs = new ArrayList<>();
         final Set<String> warnings = new LinkedHashSet<>();
         final Map<UUID, PlaceSummary> byId = new HashMap<>();
+        final List<Town> towns;
+        /** Town-stay candidates (each in its nearest segment's matrix) and the ones planned as overnights. */
+        final Map<Node, Seg> townNodes = new LinkedHashMap<>();
+
+        final List<Node> planned = new ArrayList<>();
+        final List<RoadTrip.NightStays> stayOptions = new ArrayList<>();
         String provider = "OSRM", basis;
         int candidateCount;
         long seed;
 
-        Run(List<PlaceSummary> places, Function<UUID, PlaceHours> hours, TravelProvider travel, RoadTripRequest req) {
+        Run(
+                List<PlaceSummary> places,
+                List<Town> towns,
+                Function<UUID, PlaceHours> hours,
+                TravelProvider travel,
+                RoadTripRequest req) {
             this.places = places;
+            this.towns = towns;
             this.hours = hours;
             this.travel = travel;
             this.req = req;
@@ -275,6 +316,7 @@ public final class RoadTripPlanner {
                 s.nodes.add(s.b);
                 s.nodes.addAll(s.candidates);
                 s.nodes.addAll(s.hotels);
+                s.nodes.addAll(s.towns);
                 List<LatLon> pts = new ArrayList<>();
                 for (int i = 0; i < s.nodes.size(); i++) {
                     s.ix.put(s.nodes.get(i), i);
@@ -288,6 +330,7 @@ public final class RoadTripPlanner {
                 for (Node c : s.candidates) c.added = s.t(s.a, c) + s.t(c, s.b) - direct;
             }
 
+            if (splitDays()) planStays();
             List<Node> chosen = selectDetours();
             Sim base = simulate(List.of());
             if (!base.ok()) {
@@ -386,6 +429,7 @@ public final class RoadTripPlanner {
                                     e.getKey().hotels.add(n);
                                 }));
             }
+            if (splitDays()) addTowns(fixed);
             candidateCount = corridor.size();
             if (req.interests().isEmpty()) return;
             if (corridor.isEmpty()) {
@@ -438,6 +482,139 @@ public final class RoadTripPlanner {
             }
         }
 
+        boolean splitDays() {
+            return req.drivingDays() != null && req.drivingDays() >= 2;
+        }
+
+        /**
+         * Town-stay candidates: gazetteer cities and towns within {@link #TOWN_CORRIDOR_KM} of the route with at
+         * least one listed place to stay within {@link #TOWN_STAY_RADIUS_KM} (otherwise not a proper stop). Each
+         * joins the matrix of its nearest segment, with its stays and the things to do around it.
+         */
+        void addTowns(List<Node> fixed) {
+            List<PlaceSummary> stays = places.stream()
+                    .filter(p -> "accommodation".equals(p.primaryCategory())
+                            && !req.avoid().contains(p.id()))
+                    .toList();
+            List<PlaceSummary> things = places.stream()
+                    .filter(p -> p.activity() && !NOT_THINGS_TO_DO.contains(p.primaryCategory()))
+                    .toList();
+            for (Town t : towns) {
+                if (fixed.stream().anyMatch(f -> Geo.haversineKm(f.lat, f.lon, t.lat(), t.lon()) < TOWN_STAY_RADIUS_KM))
+                    continue;
+                Seg best = null;
+                double bestD = Double.MAX_VALUE, bestT = 0;
+                for (Seg s : segs) {
+                    double[] dt = distanceToPolyline(s.poly, t.lat(), t.lon());
+                    if (dt[0] < bestD) {
+                        bestD = dt[0];
+                        bestT = dt[1];
+                        best = s;
+                    }
+                }
+                if (best == null || bestD > TOWN_CORRIDOR_KM) continue;
+                List<PlaceSummary> here = near(stays, t, TOWN_STAY_RADIUS_KM);
+                if (here.isEmpty()) continue;
+                Node n = new Node(t.name(), "TOWN", t.lat(), t.lon(), null, true, 0);
+                n.town = t;
+                n.progress = bestT;
+                n.stays = here;
+                // Things to do: those matching the trip's interests first, then by distance.
+                n.sights = near(things, t, TOWN_SIGHTS_RADIUS_KM).stream()
+                        .sorted(Comparator.comparing(
+                                (PlaceSummary p) -> p.interests().stream().noneMatch(req.interests()::containsKey)))
+                        .toList();
+                best.towns.add(n);
+                townNodes.put(n, best);
+            }
+        }
+
+        static List<PlaceSummary> near(List<PlaceSummary> ps, Town t, double km) {
+            return ps.stream()
+                    .filter(p -> Geo.haversineKm(t.lat(), t.lon(), p.lat(), p.lon()) <= km)
+                    .sorted(Comparator.comparingDouble(
+                            (PlaceSummary p) -> Geo.haversineKm(t.lat(), t.lon(), p.lat(), p.lon())))
+                    .toList();
+        }
+
+        /**
+         * Town stays for {@code drivingDays}: night k aims at k/N of the direct driving time. A town scores (lower is
+         * better) |its driving time from the start − target| + the extra driving to leave the route for it − {@link
+         * #TOWN_SIGHTS_WEIGHT} × min(things to do, {@link #TOWN_SIGHTS_FULL}) / {@link #TOWN_SIGHTS_FULL}. So a town
+         * with 20+ things to do can win while up to 90 min further than an empty one. Towns more than {@link
+         * #TOWN_MAX_DETOUR_MINUTES} of extra driving off the route are left out. The top town, or the user's pick
+         * from {@code stayChoices}, becomes that night's overnight. ponytail: driving times are along the direct
+         * route, so the split is even on the direct drive, not counting detours.
+         */
+        void planStays() {
+            int[] offset = new int[segs.size()];
+            int total = 0;
+            for (Seg s : segs) {
+                offset[s.index] = total;
+                total += s.t(s.a, s.b);
+            }
+            int n = req.drivingDays(), prevAt = 0;
+            for (int k = 1; k < n; k++) {
+                int target = Math.round((float) k * total / n);
+                List<Object[]> cands = new ArrayList<>(); // {node, at, detour, score}
+                for (var e : townNodes.entrySet()) {
+                    Node t = e.getKey();
+                    Seg s = e.getValue();
+                    int at = offset[s.index] + s.t(s.a, t);
+                    int detour = Math.max(0, s.t(s.a, t) + s.t(t, s.b) - s.t(s.a, s.b));
+                    if (at <= prevAt || at >= total || detour > TOWN_MAX_DETOUR_MINUTES) continue;
+                    cands.add(new Object[] {t, at, detour, 0.0});
+                }
+                for (Object[] o : cands)
+                    o[3] = Math.abs((int) o[1] - target)
+                            + (int) o[2]
+                            - TOWN_SIGHTS_WEIGHT
+                                    * Math.min(((Node) o[0]).sights.size(), TOWN_SIGHTS_FULL)
+                                    / TOWN_SIGHTS_FULL;
+                cands.sort(Comparator.comparingDouble((Object[] o) -> (double) o[3])
+                        .thenComparing(o -> ((Node) o[0]).name));
+                if (cands.isEmpty()) {
+                    warnings.add("Night " + k + ": no town with a listed place to stay lies within "
+                            + (int) TOWN_CORRIDOR_KM + " km of the route; the daily driving limit decides where to"
+                            + " stop.");
+                    continue;
+                }
+                String pick = req.stayChoices().get(k);
+                Object[] chosen = cands.stream()
+                        .filter(o -> ((Node) o[0]).town.key().equals(pick))
+                        .findFirst()
+                        .orElse(cands.getFirst());
+                if (pick != null && !((Node) chosen[0]).town.key().equals(pick))
+                    warnings.add("Night " + k + ": the chosen town is not reachable in order on this route; using "
+                            + ((Node) chosen[0]).name + ".");
+                List<Object[]> shown = new ArrayList<>(cands.subList(0, Math.min(TOWN_OPTIONS, cands.size())));
+                if (!shown.contains(chosen)) shown.add(chosen);
+                List<RoadTrip.TownOption> opts = new ArrayList<>();
+                for (Object[] o : shown) {
+                    Node t = (Node) o[0];
+                    opts.add(new RoadTrip.TownOption(
+                            t.name,
+                            t.town.key(),
+                            t.lat,
+                            t.lon,
+                            (int) o[1],
+                            (int) o[2],
+                            t.sights.size(),
+                            t.sights.stream()
+                                    .map(PlaceSummary::name)
+                                    .distinct()
+                                    .limit(3)
+                                    .toList(),
+                            t.stays.size(),
+                            t.stays.stream().limit(5).map(PlaceSummary::name).toList(),
+                            o == chosen));
+                }
+                stayOptions.add(new RoadTrip.NightStays(k, target, List.copyOf(opts)));
+                planned.add((Node) chosen[0]);
+                prevAt = (int) chosen[1];
+            }
+        }
+
         /** Rank order; each detour within its own limit, the set within count and total-time limits. */
         List<Node> selectDetours() {
             List<Node> all = new ArrayList<>();
@@ -458,8 +635,8 @@ public final class RoadTripPlanner {
 
         /** Detours of one segment, ordered between its fixed endpoints. */
         List<Node> order(Seg s, List<Node> chosen, Map<Integer, RoadTrip.Ordering> orderings) {
-            List<Node> mine = chosen.stream()
-                    .filter(s.candidates::contains)
+            List<Node> mine = java.util.stream.Stream.concat(chosen.stream(), planned.stream())
+                    .filter(n -> s.candidates.contains(n) || townNodes.get(n) == s)
                     .sorted(Comparator.comparingDouble((Node n) -> n.progress))
                     .toList();
             List<Node> seq = new ArrayList<>();
@@ -648,7 +825,33 @@ public final class RoadTripPlanner {
                     drive(st, day, s.t(u, v), s.km(u, v), u.name, v.name);
                     path.add(v);
                     day.points.add(v.ll());
-                    if (v.kind.equals("DETOUR")) {
+                    if (v.kind.equals("TOWN")) {
+                        // A planned town stay (only planned towns are in the sequence).
+                        day.items.add(at("OVERNIGHT", v, st.clock, 0, "Town stay"));
+                        day.overnight = new RoadTrip.Overnight(
+                                v.name,
+                                null,
+                                v.lat,
+                                v.lon,
+                                "TOWN",
+                                "PROVIDER_SOURCED",
+                                String.format(
+                                        "Splits the drive into %d days. %d place(s) to stay listed in OpenStreetMap"
+                                                + " within %.0f km (%s); availability and price unknown. %d thing(s)"
+                                                + " to do within %.0f km.",
+                                        req.drivingDays(),
+                                        v.stays.size(),
+                                        TOWN_STAY_RADIUS_KM,
+                                        String.join(
+                                                ", ",
+                                                v.stays.stream()
+                                                        .limit(3)
+                                                        .map(PlaceSummary::name)
+                                                        .toList()),
+                                        v.sights.size(),
+                                        TOWN_SIGHTS_RADIUS_KM));
+                        day = nextDay(days, day, st, v);
+                    } else if (v.kind.equals("DETOUR")) {
                         int start = st.clock;
                         PlaceHours ph = hours.apply(v.place.id());
                         OpeningHours oh = ph == null ? null : OpeningHours.parse(ph.raw());
@@ -828,6 +1031,9 @@ public final class RoadTripPlanner {
             for (String i : new TreeSet<>(req.interests().keySet()))
                 if (!covered.contains(i))
                     warnings.add("Interest '" + i + "' is not covered by any detour within the detour limits.");
+            if (splitDays() && days.size() > req.drivingDays())
+                warnings.add("The trip needs " + days.size() + " driving days, not " + req.drivingDays()
+                        + ", within the daily driving and day-end limits.");
             if (!chosen.isEmpty() || !req.interests().isEmpty())
                 warnings.add("Google Maps may choose a different road than TripWeaver's routing between waypoints.");
             return new RoadTrip(
@@ -839,6 +1045,7 @@ public final class RoadTripPlanner {
                     totalDrive,
                     round(totalKm),
                     nights,
+                    List.copyOf(stayOptions),
                     candidateCount,
                     List.copyOf(warnings),
                     provider,

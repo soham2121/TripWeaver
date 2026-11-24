@@ -24,8 +24,10 @@ public class PlaceController {
 
     private final PlaceCatalogue catalogue;
     private final JdbcTemplate jdbc;
+    private final TownGazetteer towns;
 
-    public PlaceController(PlaceCatalogue catalogue, JdbcTemplate jdbc) {
+    public PlaceController(PlaceCatalogue catalogue, JdbcTemplate jdbc, TownGazetteer towns) {
+        this.towns = towns;
         this.catalogue = catalogue;
         this.jdbc = jdbc;
     }
@@ -58,6 +60,13 @@ public class PlaceController {
             @RequestParam(defaultValue = "8") int limit) {
         if (limit < 1 || limit > 25) throw ApiException.badRequest("BAD_LIMIT", "limit must be in 1..25");
         return catalogue.index(destination).autocomplete(q, limit);
+    }
+
+    /** Cities and towns from the OSM gazetteer (whole western India extract), for location pickers. */
+    @GetMapping("/towns")
+    public List<Suggestion> towns(@RequestParam String q, @RequestParam(defaultValue = "5") int limit) {
+        if (limit < 1 || limit > 25) throw ApiException.badRequest("BAD_LIMIT", "limit must be in 1..25");
+        return towns.autocomplete(q, limit);
     }
 
     public record NearbyPlace(PlaceSummary place, double distanceKm) {}

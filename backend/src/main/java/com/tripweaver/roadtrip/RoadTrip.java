@@ -19,6 +19,7 @@ public record RoadTrip(
         int totalDrivingMinutes,
         double totalKm,
         int nights,
+        List<NightStays> stayOptions,
         int detourCandidates,
         List<String> warnings,
         String travelProvider,
@@ -51,7 +52,33 @@ public record RoadTrip(
             double km,
             String note) {}
 
-    /** kind: USER (an overnight waypoint) or SUGGESTED (OSM-listed accommodation near the route). */
+    /**
+     * Ranked towns for one night when the drive is split into {@code drivingDays}: towns closest to the even split
+     * (driving time from the start), with the least extra driving off the route, ranked first.
+     */
+    public record NightStays(int night, int targetDriveMinutes, List<TownOption> options) {}
+
+    /**
+     * A gazetteer city or town near the route with places to stay. {@code key} goes back in {@code stayChoices};
+     * {@code sights} counts things to do within 15 km and {@code stays} places to stay within 5 km (OSM listings).
+     */
+    public record TownOption(
+            String town,
+            String key,
+            double lat,
+            double lon,
+            int driveFromStartMinutes,
+            int detourMinutes,
+            int sights,
+            List<String> topSights,
+            int stays,
+            List<String> stayNames,
+            boolean chosen) {}
+
+    /**
+     * kind: USER (an overnight waypoint), TOWN (a town stay splitting the drive into the requested days) or SUGGESTED
+     * (OSM-listed accommodation near the route, when the daily driving limit forces a stop).
+     */
     public record Overnight(
             String name, UUID placeId, double lat, double lon, String kind, String confidence, String note) {}
 

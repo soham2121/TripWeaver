@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.tripweaver.common.ApiException;
 import com.tripweaver.place.PlaceSummary;
+import com.tripweaver.place.Town;
 import com.tripweaver.routing.EstimateTravel;
 import com.tripweaver.routing.LatLon;
 import com.tripweaver.routing.Route;
@@ -27,6 +28,7 @@ class RoadTripPlannerTest {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
     final List<PlaceSummary> places = new ArrayList<>();
+    final List<Town> towns = new ArrayList<>();
     TravelProvider travel = EstimateTravel.INSTANCE;
 
     static double lat(double t) {
@@ -82,7 +84,7 @@ class RoadTripPlannerTest {
         String body = "{\"origin\":" + wp("Origin", 0) + ",\"destination\":" + wp("Destination", 1)
                 + ",\"departureDate\":\"2026-12-14\",\"departureTime\":\"07:00\"" + (json.isEmpty() ? "" : "," + json)
                 + "}";
-        return RoadTripPlanner.plan(places, id -> null, travel, JSON.readValue(body, RoadTripRequest.class));
+        return RoadTripPlanner.plan(places, towns, id -> null, travel, JSON.readValue(body, RoadTripRequest.class));
     }
 
     ApiException fails(String json) {
@@ -134,6 +136,55 @@ class RoadTripPlannerTest {
                 1, names(r, "MEAL").stream().filter(n -> n.startsWith("Lunch")).count() / 1);
         assertEquals("Destination", names(r, "ARRIVE").getFirst());
         assertTrue(r.disclaimer().contains("heuristic"));
+    }
+
+    void town(String name, double t, double dLon, int stays, int sights) {
+        towns.add(new Town(name, "town", lat(t), lon(t) + dLon, List.of()));
+        for (int i = 0; i < stays; i++)
+            add(name + " Lodge " + i, "accommodation", null, t, dLon + 0.005 * (i + 1), false);
+        for (int i = 0; i < sights; i++) add(name + " Fort " + i, "fort", "heritage", t, dLon - 0.003 * (i + 1), true);
+    }
+
+    @Test
+    void drivingDaysStopAtATownNearMidwayWithThingsToDo() {
+        town("Early", 0.2, 0.01, 2, 0);
+        town("Midtown", 0.5, 0.01, 2, 1);
+        town("Busy", 0.58, 0.01, 1, 20); // ≈ 50 min past the midpoint, but much more to do
+        town("Late", 0.8, 0.01, 1, 0);
+        town("Empty", 0.3, 0.0, 0, 3); // nowhere to stay: not a proper stop
+        town("Far", 0.5, 0.6, 3, 3); // ≈ 64 km off the route
+        // ≈ 9 h fits one day at a 12 h limit and a late day end; 2 driving days still stop near halfway.
+        String split = "\"drivingDays\":2,\"maxDrivingHoursPerDay\":12,\"dayEnd\":\"23:00\"";
+        RoadTrip r = plan(split);
+        assertEquals(2, r.days().size());
+        RoadTrip.Overnight o = r.days().getFirst().overnight();
+        assertEquals("TOWN", o.kind());
+        assertEquals("Busy", o.name(), r.stayOptions().toString());
+        assertTrue(o.note().contains("Busy Lodge 0"), o.note());
+        RoadTrip.NightStays n = r.stayOptions().getFirst();
+        assertEquals(1, n.night());
+        List<String> shown = n.options().stream().map(RoadTrip.TownOption::town).toList();
+        assertEquals(List.of("Busy", "Midtown"), shown.subList(0, 2), shown.toString());
+        assertTrue(shown.stream().noneMatch(x -> x.equals("Empty") || x.equals("Far")), shown.toString());
+        RoadTrip.TownOption busy = n.options().getFirst();
+        assertTrue(busy.chosen());
+        assertEquals(20, busy.sights());
+        assertEquals(1, busy.stays());
+        assertEquals(3, busy.topSights().size());
+
+        // The user's pick from the options replaces the top town.
+        String mid = n.options().get(1).key();
+        RoadTrip picked = plan(split + ",\"stayChoices\":{\"1\":\"" + mid + "\"}");
+        assertEquals("Midtown", picked.days().getFirst().overnight().name());
+        assertEquals(
+                List.of("Midtown"),
+                picked.stayOptions().getFirst().options().stream()
+                        .filter(RoadTrip.TownOption::chosen)
+                        .map(RoadTrip.TownOption::town)
+                        .toList());
+
+        assertTrue(plan("").stayOptions().isEmpty());
+        assertEquals("BAD_DAYS", fails("\"drivingDays\":0").errorCode());
     }
 
     @Test

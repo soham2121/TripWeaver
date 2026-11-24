@@ -30,6 +30,8 @@ export interface RoadTripRequest {
   accommodationPerNight?: number
   foodPerPersonPerDay?: number
   avoid?: string[]
+  drivingDays?: number
+  stayChoices?: Record<string, string>
 }
 
 export interface RoadTripItem {
@@ -59,7 +61,7 @@ export interface RoadTripDay {
     placeId: string | null
     lat: number
     lon: number
-    kind: 'USER' | 'SUGGESTED'
+    kind: 'USER' | 'TOWN' | 'SUGGESTED'
     confidence: string
     note: string
   } | null
@@ -100,6 +102,8 @@ export interface RoadTrip {
   totalDrivingMinutes: number
   totalKm: number
   nights: number
+  /** Absent on trips saved before town stays existed. */
+  stayOptions?: NightStays[]
   detourCandidates: number
   warnings: string[]
   travelProvider: string
@@ -112,4 +116,27 @@ export interface RoadTripResponse {
   runId: string
   durationMicros: number
   roadTrip: RoadTrip
+}
+
+export interface TownOption {
+  town: string
+  /** Goes back in stayChoices. */
+  key: string
+  lat: number
+  lon: number
+  driveFromStartMinutes: number
+  detourMinutes: number
+  /** Things to do within 15 km. */
+  sights: number
+  topSights: string[]
+  /** Places to stay listed in OpenStreetMap within 5 km. */
+  stays: number
+  stayNames: string[]
+  chosen: boolean
+}
+
+export interface NightStays {
+  night: number
+  targetDriveMinutes: number
+  options: TownOption[]
 }

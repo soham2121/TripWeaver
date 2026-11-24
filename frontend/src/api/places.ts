@@ -22,6 +22,8 @@ export const placesApi = {
     api<Page<PlaceSummary>>(`/places/search?${qs({ ...p, destination: 'goa' })}`),
   autocomplete: (q: string, limit = 8, destination = 'goa') =>
     api<Suggestion[]>(`/places/autocomplete?${qs({ q, limit, destination })}`),
+  /** Cities and towns (OSM gazetteer, western India), for location pickers. */
+  towns: (q: string, limit = 4) => api<Suggestion[]>(`/places/towns?${qs({ q, limit })}`),
   get: (id: string) => api<PlaceDetail>(`/places/${encodeURIComponent(id)}`),
   destinations: () => api<Destination[]>('/destinations'),
 }

@@ -33,9 +33,19 @@ class OpeningHoursTest {
     }
 
     @Test
-    void closingAfterMidnightIsCappedAtMidnight() {
-        assertEquals(List.of(w(480, 1440)), on("Mo-Su 08:00-01:00", DayOfWeek.FRIDAY));
+    void closingAfterMidnightRunsIntoTheNextDay() {
+        assertEquals(List.of(w(480, 1500)), on("Mo-Su 08:00-01:00", DayOfWeek.FRIDAY));
         assertEquals(List.of(w(540, 1440)), on("Mo-Su 09:00-00:00", DayOfWeek.FRIDAY));
+    }
+
+    @Test
+    void earliestStartCrossesMidnight() {
+        var bar = OpeningHours.parse("Mo-Sa 20:00-03:00");
+        assertEquals(1500, bar.earliestStart(DayOfWeek.FRIDAY, 1500, 90)); // 01:00-02:30 Saturday morning
+        assertEquals(-1, bar.earliestStart(DayOfWeek.FRIDAY, 1560, 90)); // would end 03:30
+        // 24/7 merges across midnight; a split shift on the next day does not join today's close.
+        assertEquals(1400, OpeningHours.parse("24/7").earliestStart(DayOfWeek.MONDAY, 1400, 120));
+        assertEquals(-1, OpeningHours.parse("09:00-23:00").earliestStart(DayOfWeek.MONDAY, 1350, 60));
     }
 
     @Test
