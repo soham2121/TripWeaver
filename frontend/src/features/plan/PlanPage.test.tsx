@@ -238,8 +238,7 @@ test('signed-in users save the plan as a trip', async () => {
 
 test('signed-out users are asked to sign in before saving', async () => {
   await planBeach()
-  expect(screen.getByRole('link', { name: /sign in to save/i })).toHaveAttribute(
-    'href',
-    '/login?next=%2Fplan',
-  )
+  await userEvent.click(screen.getByRole('button', { name: /sign in to save/i }))
+  expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /generate plan/i })).toBeInTheDocument()
 })

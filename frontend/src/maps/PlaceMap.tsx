@@ -24,6 +24,13 @@ export const MAP_STYLE: string =
   (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ||
   'https://tiles.openfreemap.org/styles/liberty'
 
+/** OpenFreeMap's dark style in dark mode, unless a custom style URL is set. */
+// ponytail: chosen when the map mounts; a theme switch shows on the next page, setStyle would drop the route layers.
+const styleForTheme = () =>
+  document.documentElement.dataset.theme === 'dark' && !import.meta.env.VITE_MAP_STYLE_URL
+    ? 'https://tiles.openfreemap.org/styles/dark'
+    : MAP_STYLE
+
 interface Props {
   points: MapPoint[]
   selectedId?: string | null
@@ -46,7 +53,7 @@ export default function PlaceMap({ points, selectedId, onSelect, line, className
     try {
       m = new maplibregl.Map({
         container: el.current,
-        style: MAP_STYLE,
+        style: styleForTheme(),
         center: [73.92, 15.4],
         zoom: 9,
       })

@@ -1349,8 +1349,8 @@ Goal: produce defensible academic evidence.
 - [x] Document environment and methodology.
 - [x] Verify theoretical complexity against code.
 - [x] Run complete backend/frontend test suites.
-- [ ] Review data licensing/provider policies.
-- [ ] Fix critical defects.
+- [x] Review data licensing/provider policies.
+- [x] Fix critical defects.
 - [x] Confirm no fabricated results or unrun-test claims.
 
 **Acceptance gate:** All core algorithms have tests and reproducible scaled benchmarks; baselines are fair; complexity notes match code; critical tests pass.
@@ -1359,22 +1359,22 @@ Goal: produce defensible academic evidence.
 
 Goal: clean final submission package.
 
-- [ ] Complete README.
-- [ ] Complete 1–2 page project proposal.
-- [ ] Complete 5–8 page technical report.
-- [ ] Complete architecture diagram.
-- [ ] Complete algorithm pseudocode and correctness notes.
-- [ ] Complete data attribution/provenance.
-- [ ] Complete benchmark tables/plots.
-- [ ] Document assumptions, limitations and failure cases.
-- [ ] Complete team contribution record.
-- [ ] Prepare preloaded demo data.
-- [ ] Prepare 8-minute demo script.
+- [x] Complete README.
+- [x] Complete 1–2 page project proposal.
+- [x] Complete 5–8 page technical report.
+- [x] Complete architecture diagram.
+- [x] Complete algorithm pseudocode and correctness notes.
+- [x] Complete data attribution/provenance.
+- [x] Complete benchmark tables/plots.
+- [x] Document assumptions, limitations and failure cases.
+- [x] Complete team contribution record.
+- [x] Prepare preloaded demo data.
+- [x] Prepare 8-minute demo script.
 - [ ] Rehearse on a clean local setup.
 - [ ] Prepare each student for 2-minute viva.
-- [ ] Verify clean-clone setup commands.
+- [x] Verify clean-clone setup commands.
 - [ ] Tag final working version in Git.
-- [ ] Capture genuine screenshots and demo evidence.
+- [x] Capture genuine screenshots and demo evidence.
 
 **Acceptance gate:** Clean checkout builds; complete workflow works offline from optional APIs; examiner can alter inputs; each member can explain their contribution and one algorithm in depth.
 
@@ -1413,12 +1413,12 @@ Goal: clean final submission package.
 
 ## CIA evidence
 - [x] At least five correctness tests per core algorithm; target 8–12.
-- [ ] At least three increasing benchmark sizes per core algorithm.
+- [x] At least three increasing benchmark sizes per core algorithm.
 - [x] Baseline comparison per core algorithm.
 - [x] Actual benchmark outputs saved.
 - [x] Edge/failure cases demonstrated.
-- [ ] README and reproducible setup complete.
-- [ ] Proposal and technical report complete.
+- [x] README and reproducible setup complete.
+- [x] Proposal and technical report complete.
 - [ ] Eight-minute demo rehearsed.
 - [ ] Each member ready for viva.
 

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { tripsApi } from '../../api/trips'
 import type { TripKind } from '../../types/trip'
 import { useAuth } from '../auth/auth'
+import { LoginPage } from '../auth/LoginPage'
 
 /** Saves the plan on screen as a trip (signed-in users) so it can be edited later and shared. */
 export function SaveTrip({
@@ -18,21 +19,25 @@ export function SaveTrip({
   defaultTitle: string
 }) {
   const { user } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
   const [title, setTitle] = useState(defaultTitle)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
 
+  // Sign in on this page: going to /login would unmount the planner and lose the plan on screen.
   if (!user)
-    return (
+    return signingIn ? (
+      <LoginPage inline />
+    ) : (
       <p className="card p-2 text-sm">
-        <Link
-          to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
+        <button
+          type="button"
+          onClick={() => setSigningIn(true)}
           className="text-teal-700 underline"
         >
           Sign in to save this trip
-        </Link>{' '}
+        </button>{' '}
         and share it with your travel companions.
       </p>
     )

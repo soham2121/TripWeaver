@@ -95,8 +95,8 @@ export function ItineraryView({
               <li key={d.day}>
                 <div className="flex justify-between text-xs">
                   <span>
-                    Day {d.day} · {label(d.dayOfWeek.toLowerCase())} {d.date} · {d.stops.length}{' '}
-                    stop(s)
+                    Day {d.day} · {d.dayOfWeek[0] + d.dayOfWeek.slice(1).toLowerCase()} {d.date} ·{' '}
+                    {d.stops.length} stop(s)
                   </span>
                   <span>
                     {label(d.workload.label.toLowerCase())} ·{' '}
@@ -163,7 +163,7 @@ export function ItineraryView({
             onClick={() => setDayIdx(i)}
             className={`rounded-full px-3.5 py-1 text-sm font-medium ${d === day ? 'bg-teal-700 text-white shadow-sm' : 'bg-white text-zinc-700 ring-1 ring-zinc-200 hover:ring-zinc-300'}`}
           >
-            Day {d.day} · {label(d.dayOfWeek.toLowerCase())}
+            Day {d.day} · {d.dayOfWeek[0] + d.dayOfWeek.slice(1).toLowerCase()}
           </button>
         ))}
       </div>

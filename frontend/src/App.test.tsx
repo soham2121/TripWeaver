@@ -22,3 +22,16 @@ test('shows unavailable when API errors', async () => {
   render(<App />)
   expect(await screen.findByText(/API: unavailable/)).toBeInTheDocument()
 })
+
+test('theme toggle switches to dark and remembers it', async () => {
+  mockApi([[/./, () => ({ status: 'UP' })]])
+  document.documentElement.dataset.theme = 'light'
+  render(<App />)
+  const toggle = screen.getByRole('button', { name: 'Dark mode' })
+  toggle.click()
+  expect(document.documentElement.dataset.theme).toBe('dark')
+  expect(localStorage.getItem('theme')).toBe('dark')
+  expect(
+    await screen.findByRole('button', { name: 'Dark mode', pressed: true }),
+  ).toBeInTheDocument()
+})

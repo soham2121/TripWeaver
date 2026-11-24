@@ -118,7 +118,7 @@ cd backend
 
 ## 7. Map tiles
 
-- **Source:** OpenFreeMap vector tiles, style `liberty`, drawn with MapLibre GL. No API key.
+- **Source:** OpenFreeMap vector tiles, drawn with MapLibre GL. No API key. Style `liberty` in light mode and `dark` in dark mode (D48).
 - **Attribution:** MapLibre renders it from the style, and the page footer names OpenStreetMap and OpenFreeMap.
 - **If tiles fail:** the map area says so, and the list and timeline still work.
 
@@ -127,3 +127,18 @@ cd backend
 - **Google Places API:** not used (D39). No key, no requests, no Google content stored. Google Maps appears only as directions links for navigation.
 - **Goa-only extract:** Geofabrik has no Goa file; India is split into zones, and Goa is in the Western Zone. The Java extractor crops the Western Zone PBF to the Goa boundary relation, so the raw zone file stays local and only the derived JSON is in Git. The database holds no raw PBF, road geometry or routing data.
 - **Weather:** not part of the current plan.
+
+## 9. Licence check (2026-11-24)
+
+Each provider's own page was reread on 2026-11-24.
+
+| Component | Licence and terms | What TripWeaver does |
+|---|---|---|
+| OpenStreetMap data | ODbL 1.0. Credit "© OpenStreetMap contributors" and make clear the data is under ODbL (openstreetmap.org/copyright) | The footer and README say both. The derived extracts are published under ODbL |
+| OpenFreeMap tiles | Free public instance: no key, no registration, no view limits, commercial use allowed. Attribution required ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"), which MapLibre adds automatically. Service is as-is and may stop without notice. No automated bulk collection (ToS updated 2026-11-24) | MapLibre's attribution control is kept. Tiles are fetched only for the map in view. If tiles fail, the map says so and the plan still works. `VITE_MAP_STYLE_URL` allows switching provider |
+| OpenMapTiles schema | Code BSD-3-Clause. Cartography CC-BY 4.0, with a visible credit | Covered by the attribution string above |
+| OSRM backend | BSD 2-Clause (Project OSRM contributors) | Self-hosted, unmodified Docker image |
+| MapLibre GL JS | BSD 3-Clause | npm dependency; licence kept in `node_modules` |
+| Figtree, Bricolage Grotesque | SIL Open Font License 1.1 | Self-hosted via `@fontsource-variable` |
+
+Result: no change was needed.

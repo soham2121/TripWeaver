@@ -4,8 +4,8 @@ import { ApiError } from '../../api/client'
 import { authApi } from '../../api/trips'
 import { useAuth } from './auth'
 
-/** Sign in or create an account (username + password). */
-export function LoginPage() {
+/** Sign in or create an account (username + password). `inline` stays on the current page after sign-in. */
+export function LoginPage({ inline = false }: { inline?: boolean }) {
   const [params] = useSearchParams()
   const next = params.get('next')?.startsWith('/') ? params.get('next')! : '/trips'
   const navigate = useNavigate()
@@ -25,7 +25,7 @@ export function LoginPage() {
         ? await authApi.register(username, password, displayName || undefined)
         : await authApi.login(username, password)
       setUser(u)
-      navigate(next)
+      if (!inline) navigate(next)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not reach the server.')
     } finally {
@@ -34,6 +34,7 @@ export function LoginPage() {
   }
 
   const input = 'field'
+  const Heading = inline ? 'h2' : 'h1'
   return (
     <form
       className="mx-auto max-w-sm space-y-3 card p-4 text-sm"
@@ -42,7 +43,7 @@ export function LoginPage() {
         void submit()
       }}
     >
-      <h1 className="text-xl font-bold">{register ? 'Create an account' : 'Sign in'}</h1>
+      <Heading className="text-xl font-bold">{register ? 'Create an account' : 'Sign in'}</Heading>
       <p className="text-xs text-zinc-500">
         An account lets you save trips, share them and plan with friends.
       </p>

@@ -421,7 +421,9 @@ Bugs found and fixed:
 
 Found, not fixed (needs a decision): nightlife places with no sourced opening hours can be scheduled in the morning (Viva Pub at 09:04 in the beach-weekend demo).
 
-## Open items (noted 2026-11-23)
+## Open items (noted 2026-11-23; all closed by 2026-11-24)
+
+Closed: the multi-day crash (commit e3bfdb6), road-trip town stays (e3bfdb6), nightlife hours (D44) and the browser re-test (see "Browser re-test, dark mode and Phase 12–13" below).
 
 - **Multi-day itinerary returns a server error.** `ItineraryPlanner.time()` calls `LocalTime.of` with hour 24 when a simulated time reaches midnight (path: `fillOptional` → `simulate`). Seen in the backend log as `DateTimeException: Invalid value for HourOfDay (valid values 0 - 23): 24`. Not fixed yet.
 - **Road trip updates.** Requested by the user; details to be agreed.
@@ -500,3 +502,50 @@ The phase replaced "Optional external enrichment" after Google Places went out o
 - **Q1 → D45:** solo project with the teacher's permission. `docs/CONTRIBUTIONS.md` written.
 - **Q7 → D46:** `V7__drop_google_leftovers.sql` applied. Both objects were checked empty first. Applied on the local database (via a one-off run) and on Supabase (on the backend restart). `verify-db.sql`: 8/8 true on both, Flyway at V7. Backend tests: 216/216.
 - **UI refresh (D47):** new colour system, fonts, route-rail timelines, skeleton loading, View Transitions; mobile overflow fixed on plan, road trip and discover. Checked in Chrome at desktop and 390 px. Frontend 36/36 tests, `tsc` and `prettier` clean, production build ok, impeccable detector clean.
+
+## Browser re-test, dark mode and Phase 12–13 (2026-11-24, evening)
+
+**Dark mode (D48).** Toggle in the header; the system setting is the default and a choice is saved. Pre-paint script, so no flash. Maps switch to OpenFreeMap `dark`. Test: `theme toggle switches to dark and remembers it`.
+
+**Browser re-test** (Chrome, backend on Supabase, OSRM up). These flows passed:
+- Home and every demo.
+- Plan today, with the Trie base picker (`panj` → Panaji).
+- Multi-day, 2 and 4 days.
+- Road trip, Mumbai to Goa: 568 km, 1 night, OSRM.
+- Discover.
+- Sign-up and sign-in.
+- Saving a trip.
+- Adding an expense (₹850 split).
+- Creating a read-only link, opening it in a second tab, and revoking it (the link then shows "invalid, revoked or expired").
+- Light and dark themes.
+
+No console errors.
+
+Bugs found and fixed:
+- **Signing in to save lost the plan.** "Sign in to save this trip" went to `/login`, which unmounted the planner, so the user came back to an empty form. Sign-in is now inline on the same page (`LoginPage inline`), and the plan stays. Test: `SaveTrip.test.tsx`.
+- **"Known total ₹0"** when every cost was unknown. It now says "No costs known yet". Test: `BudgetTable.test.tsx`.
+- **Per-person limit mislabelled.** The limit read "hard limit ₹27,000 per person", but the backend's `limit` is the group total (budget × party). It now reads "₹27,000 for the group (₹9,000 per person)". Test added.
+- **Weekday labels** were lower case ("wednesday"). They are now capitalised.
+
+**Phase 12 closed.**
+- Licences rechecked (`DATA_SOURCES.md` §9).
+- Complexity notes spot-checked against the code: TreeMap children in the Trie; HashMap positions and Floyd heapify in the heap; O(n²) Prim; three-way partition in Quickselect.
+
+**Phase 13.**
+- New documents:
+  - `docs/PROPOSAL.md`;
+  - `docs/REPORT.md`, which includes the architecture diagram, assumptions, limitations and failure cases;
+  - `docs/DEMO_SCRIPT.md`, the 8-minute script with viva notes.
+- New demo "Four days in Goa with friends" (`goa-four-day-friends`, the §18 scenario).
+- Screenshots in `docs/screenshots/`.
+- **Clean-clone check:** a fresh `git clone` of the committed `dev` branch passed:
+  - `./mvnw verify` (216 tests, 0 failures);
+  - `npm ci`;
+  - `vitest` (36 tests at that commit);
+  - `npm run build`.
+- **Checks now:** frontend 40/40 tests; `tsc` and `prettier` clean.
+
+**Left for the owner:**
+- Rehearse the demo once.
+- Commit, then tag the final version.
+- Viva practice.

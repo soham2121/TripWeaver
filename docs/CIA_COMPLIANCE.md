@@ -1,11 +1,11 @@
 # CIA 3 compliance map
 
-Maps each CIA requirement to evidence in the repository. A row is marked done only when the evidence exists and was verified. Last updated after Phase 10.
+Maps each CIA requirement to evidence in the repository. A row is marked done only when the evidence exists and was verified. Last updated 2026-11-24 (Phases 11–13).
 
 | Requirement | Evidence | Status |
 |---|---|---|
 | Group of 2–3 | Solo project with the teacher's permission (D45); `docs/CONTRIBUTIONS.md` | Done (exception granted) |
-| Java backend, JS-family frontend | `backend/` (Spring Boot 4, Java 25), `frontend/` (React + TypeScript) | Done (Phase 1) |
+| Java backend, JS-family frontend | `backend/` (Spring Boot 4, built for Java 21, D42), `frontend/` (React + TypeScript) | Done (Phase 1) |
 | ≥2 syllabus techniques, ≥1 from Units 4–6 | Trie (U4), Set Cover (U5), Metric TSP (U5), Heap (U2), Quickselect (U1/6) | Done (Phase 2) |
 | CO5 randomized algorithm | Randomized Quickselect, seeded, `algorithms/selection`. Used in the product for candidate pruning (Phase 5); the seed is reported in every recommendation and itinerary response | Done |
 | Original Java implementations | `backend/src/main/java/com/tripweaver/algorithms/**` | Done; `AlgorithmIsolationTest` |
@@ -14,10 +14,11 @@ Maps each CIA requirement to evidence in the repository. A row is marked done on
 | ≥5 correctness tests per core algorithm, including edge cases | `docs/CORRECTNESS.md`: Trie 12, Quickselect 15, Set Cover 15, Heap 10, TSP 12. Also product-level tests (216 backend tests in total) | Done |
 | Benchmarks at ≥3 increasing sizes | `docs/BENCHMARKS.md`, raw CSV, charts. Trie 1K–1M; Quickselect 1K–1M; Set Cover 20–500 (two universe sizes); Heap 1K–500K ops; TSP 10–200 stops | Done |
 | Baseline comparison | Trie vs linear scan; Quickselect vs sort; Set Cover lazy vs full greedy, vs exact optimum and vs cheapest-first; Heap vs linear scan; TSP vs Nearest-Neighbour and Held–Karp | Done |
-| Working product demo | Home modes and demo scenarios (Phase 9), saved and shared trips (Phase 10). The demo works without provider keys | Done; rehearsal in Phase 13 |
-| Hosted database | Supabase PostgreSQL + PostGIS via Flyway (V1–V6), RLS deny-all, `scripts/verify-db.sql`. The local PostGIS database remains the default | Done: Supabase ap-south-1, 8/8 checks, advisors without warnings |
-| Core independent of paid providers | No Google API at all (D39). Phase 11 verifies it: source and dependency checks, database check, runs with routing off | See Phase 11 in `PROGRESS.md` |
-| Reproducible setup | `README.md`. Backend tests run on in-memory H2; Docker is needed only for PostgreSQL and the optional OSRM | Done; clean-clone check in Phase 13 |
+| Working product demo | Home modes and five demo scenarios, including the §18 four-day scenario; saved and shared trips. The demo works without provider keys. Script: `docs/DEMO_SCRIPT.md`. Browser re-test passed 2026-11-24 | Done; owner rehearsal pending |
+| Hosted database | Supabase PostgreSQL + PostGIS via Flyway (V1–V7), RLS deny-all, `scripts/verify-db.sql`. The local PostGIS database remains the default | Done: Supabase ap-south-1, 8/8 checks, advisors without warnings |
+| Core independent of paid providers | No Google API at all (D39). Phase 11 verifies it: source and dependency checks, database check, runs with routing off. Licences rechecked (`DATA_SOURCES.md` §9) | Done |
+| Reproducible setup | `README.md`. Backend tests run on in-memory H2; Docker is needed only for PostgreSQL and the optional OSRM. A fresh clone passed `mvnw verify`, `npm ci`, the tests and the build (2026-11-24) | Done |
+| Proposal and technical report | `docs/PROPOSAL.md`, `docs/REPORT.md` (architecture diagram, results, limitations and failure cases) | Done |
 
 ## Algorithm contracts
 

@@ -43,6 +43,50 @@ function ApiStatus() {
   )
 }
 
+/** Light/dark switch. index.html sets the starting theme before paint; a click saves the choice. */
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+  const toggle = () => {
+    const next = dark ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    try {
+      localStorage.setItem('theme', next)
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
+    }
+    setDark(!dark)
+  }
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={dark}
+      aria-label="Dark mode"
+      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="grid size-8 place-items-center rounded-full text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="size-[18px]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        aria-hidden
+      >
+        {dark ? (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </>
+        ) : (
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        )}
+      </svg>
+    </button>
+  )
+}
+
 /** Remounts a page when its query (mode, demo) or path (trip id) changes, so state starts fresh. */
 function Fresh({
   page: Page,
@@ -149,6 +193,7 @@ export default function App() {
               <span className="order-2 ml-auto flex items-center gap-3 sm:order-none">
                 <Account />
                 <ApiStatus />
+                <ThemeToggle />
               </span>
             </div>
           </header>

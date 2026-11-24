@@ -321,3 +321,10 @@ Material technical choices. Newest at the bottom. Each entry: decision, reason, 
   - Motion has one authored moment: the day timeline cascades in on a route rail when a plan arrives. Elsewhere there are 150–250 ms state transitions, route cross-fades with a sliding active-nav pill (View Transitions), and skeletons while plans load. `prefers-reduced-motion` keeps fades and drops movement.
 - **How:** `frontend/src/index.css` remaps Tailwind's `zinc` (neutrals) and `teal` (brand) scales in `@theme` and adds `clay`, so `teal-700` is the brand indigo. Shared classes: `card`, `card-link`, `btn-primary`, `btn-secondary`, `btn-sm`, `field`, `skeleton`, `reveal`. Map route and markers use the same hex values (MapLibre cannot parse OKLCH).
 - **Fixed on the way:** map stop numbers never drew, because the default label font (Open Sans) 404s on OpenFreeMap. Labels now use Noto Sans Bold.
+
+## D48 — Dark theme by remapping the same scales (2026-11-24)
+
+- **Decision:** dark mode reuses every component class. `:root[data-theme='dark']` in `frontend/src/index.css` redefines the `zinc`, `teal`, `clay`, status scales and `--color-white`, so each step keeps its role: `zinc-50` is the canvas, `white` the card surface, `zinc-900` the text, and `teal-700` the primary action (light indigo, with `text-white` reading as dark ink on it).
+- **Theme choice:** an inline script in `index.html` sets `data-theme` before first paint, from the saved choice (`localStorage.theme`) or else the system setting. The header toggle saves the choice.
+- **Maps:** OpenFreeMap's `dark` style in dark mode, `liberty` in light, unless `VITE_MAP_STYLE_URL` is set. The style is chosen when a map mounts; a theme switch shows on the next page, because `setStyle` would drop the route layers.
+- **Why:** no `dark:` variants in about 170 class lists, so there is one place to tune the palette and nothing to keep in sync.

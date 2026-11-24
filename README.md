@@ -21,6 +21,9 @@ The full specification is in [`IMPLEMENTATION.md`](IMPLEMENTATION.md). Phase sta
   - Suggest places and vote, split expenses, and see the change history.
   - Edits made at the same time are protected by optimistic locking.
 - **Honest labels:** every cost and fact carries its source and confidence. Unknown costs are never shown as ₹0.
+- **Light and dark themes:** follows the system setting; the header toggle remembers your choice.
+
+Submission: [`docs/PROPOSAL.md`](docs/PROPOSAL.md), [`docs/REPORT.md`](docs/REPORT.md), [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md), screenshots in [`docs/screenshots/`](docs/screenshots/).
 
 Algorithm details: [`docs/ALGORITHM_DESIGN.md`](docs/ALGORITHM_DESIGN.md). Tests: [`docs/CORRECTNESS.md`](docs/CORRECTNESS.md). API: [`docs/API_SPEC.md`](docs/API_SPEC.md). Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 

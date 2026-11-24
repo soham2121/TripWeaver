@@ -41,15 +41,28 @@ export function BudgetTable({ budget }: { budget: Budget }) {
         <tfoot className="border-t border-zinc-300 text-xs text-zinc-700">
           <tr>
             <td colSpan={4} className="py-1">
-              Known total {amount(budget.knownMin, budget.knownMax)} for {budget.partySize}{' '}
-              {budget.partySize === 1 ? 'person' : 'people'} (up to {inr(budget.knownMaxPerPerson)}{' '}
-              per person)
+              {budget.knownMax === 0 && budget.unknownItems.length > 0 ? (
+                // Nothing priced yet: a "₹0" total would read as free.
+                <>
+                  No costs known yet for {budget.partySize}{' '}
+                  {budget.partySize === 1 ? 'person' : 'people'}
+                </>
+              ) : (
+                <>
+                  Known total {amount(budget.knownMin, budget.knownMax)} for {budget.partySize}{' '}
+                  {budget.partySize === 1 ? 'person' : 'people'} (up to{' '}
+                  {inr(budget.knownMaxPerPerson)} per person)
+                </>
+              )}
               {budget.unknownItems.length > 0 &&
                 ` · ${budget.unknownItems.length} item(s) not known, so the total is incomplete`}
+              {/* `limit` is already the group total; `limitBasis` only says how the user entered it. */}
               {budget.limit != null &&
-                ` · ${label(budget.strictness?.toLowerCase() ?? '')} limit ${inr(budget.limit)} ${label(
-                  budget.limitBasis?.toLowerCase() ?? '',
-                )}`}{' '}
+                ` · ${label(budget.strictness?.toLowerCase() ?? '')} limit ${inr(budget.limit)} for the group${
+                  budget.limitBasis === 'PER_PERSON' && budget.partySize > 1
+                    ? ` (${inr(budget.limit / budget.partySize)} per person)`
+                    : ''
+                }`}{' '}
               · status {label(budget.status.toLowerCase())}
             </td>
           </tr>

@@ -62,6 +62,22 @@ export const PLAN_DEMOS: (Demo & { form: Partial<PlanForm> })[] = [
     },
   },
   {
+    // The CIA demo scenario (IMPLEMENTATION.md §18). Must-visit and avoid are shown live with edits.
+    id: 'goa-four-day-friends',
+    title: 'Four days in Goa with friends',
+    description:
+      'Three friends based in Candolim: beaches, Goan food, forts and one adventure, on a hard ₹9,000 per-person budget.',
+    form: {
+      weights: { beach: 5, food: 4, heritage: 4, adventure: 3 },
+      days: 4,
+      transport: 'SCOOTER',
+      partySize: 3,
+      budgetAmount: '9000',
+      hardBudget: true,
+      foodPerPersonPerDay: '800',
+    },
+  },
+  {
     id: 'old-goa-heritage',
     title: 'Old Goa heritage day',
     description: 'One relaxed day from Panaji: churches, forts and museums by taxi.',

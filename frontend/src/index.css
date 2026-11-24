@@ -62,6 +62,73 @@
   --animate-fade: fade 220ms ease-out both;
 }
 
+/*
+ * Dark theme. Same component classes; the scales are remapped so each step keeps its role:
+ * zinc-50 is the canvas, `white` the card surface, zinc-900 the body text, teal-700 the primary action
+ * (light indigo, with `text-white` reading as dark ink on it). Maps use the OpenFreeMap dark style.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-white: oklch(0.215 0.009 80);
+
+  --color-zinc-50: oklch(0.17 0.008 80);
+  --color-zinc-100: oklch(0.25 0.01 80);
+  --color-zinc-200: oklch(0.3 0.011 80);
+  --color-zinc-300: oklch(0.38 0.012 80);
+  --color-zinc-400: oklch(0.52 0.013 80);
+  --color-zinc-500: oklch(0.69 0.013 82);
+  --color-zinc-600: oklch(0.76 0.012 82);
+  --color-zinc-700: oklch(0.84 0.01 85);
+  --color-zinc-800: oklch(0.9 0.008 85);
+  --color-zinc-900: oklch(0.95 0.006 85);
+  --color-zinc-950: oklch(0.98 0.004 85);
+
+  --color-teal-50: oklch(0.26 0.05 278);
+  --color-teal-100: oklch(0.31 0.07 278);
+  --color-teal-200: oklch(0.39 0.09 278);
+  --color-teal-300: oklch(0.48 0.12 278);
+  --color-teal-400: oklch(0.58 0.14 278);
+  --color-teal-500: oklch(0.66 0.14 278);
+  --color-teal-600: oklch(0.72 0.13 278);
+  --color-teal-700: oklch(0.77 0.115 278);
+  --color-teal-800: oklch(0.83 0.09 278);
+  --color-teal-900: oklch(0.89 0.06 278);
+  --color-teal-950: oklch(0.95 0.03 278);
+
+  --color-clay-50: oklch(0.25 0.04 45);
+  --color-clay-100: oklch(0.32 0.06 45);
+  --color-clay-500: oklch(0.68 0.15 42);
+  --color-clay-600: oklch(0.73 0.14 42);
+  --color-clay-700: oklch(0.79 0.11 45);
+  --color-clay-800: oklch(0.85 0.08 45);
+
+  --color-amber-50: oklch(0.26 0.05 75);
+  --color-amber-100: oklch(0.31 0.07 75);
+  --color-amber-200: oklch(0.38 0.08 75);
+  --color-amber-300: oklch(0.47 0.1 75);
+  --color-amber-400: oklch(0.8 0.15 80);
+  --color-amber-700: oklch(0.83 0.13 80);
+  --color-amber-800: oklch(0.88 0.1 85);
+  --color-amber-900: oklch(0.93 0.07 85);
+
+  --color-red-50: oklch(0.26 0.06 25);
+  --color-red-300: oklch(0.5 0.15 25);
+  --color-red-500: oklch(0.66 0.2 25);
+  --color-red-700: oklch(0.79 0.12 25);
+  --color-red-800: oklch(0.85 0.09 25);
+
+  --color-emerald-100: oklch(0.3 0.06 160);
+  --color-emerald-500: oklch(0.7 0.15 160);
+  --color-emerald-800: oklch(0.87 0.1 160);
+
+  --color-sky-100: oklch(0.3 0.06 230);
+  --color-sky-500: oklch(0.7 0.13 230);
+  --color-sky-800: oklch(0.87 0.08 230);
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3), 0 2px 8px -2px oklch(0 0 0 / 0.35);
+  --shadow-lift: 0 2px 4px oklch(0 0 0 / 0.3), 0 10px 24px -8px oklch(0 0 0 / 0.5);
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -109,7 +176,7 @@
     accent-color: var(--color-teal-700);
   }
   :where(input:not([type='checkbox'], [type='radio'], [type='range']), select, textarea) {
-    background-color: white;
+    background-color: var(--color-white);
     transition:
       border-color 150ms ease-out,
       box-shadow 150ms ease-out;
