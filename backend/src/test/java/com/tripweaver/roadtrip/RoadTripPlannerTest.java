@@ -3,6 +3,7 @@ package com.tripweaver.roadtrip;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.tripweaver.common.ApiException;
+import com.tripweaver.place.PlaceHours;
 import com.tripweaver.place.PlaceSummary;
 import com.tripweaver.place.Town;
 import com.tripweaver.routing.EstimateTravel;
@@ -291,6 +292,25 @@ class RoadTripPlannerTest {
         assertTrue(
                 tight.warnings().stream().anyMatch(w -> w.contains("dropped")),
                 tight.warnings().toString());
+    }
+
+    @Test
+    void aClosedDetourIsDroppedWithoutDroppingAnOpenOneOfLowerValue() {
+        PlaceSummary closed = add("Sunday Fort", "fort", "heritage", 0.25, 0.02, true);
+        add("Open Beach", "beach", "beach", 0.40, -0.03, true);
+        // 2026-12-14 is a Monday; the fort opens only on Sundays.
+        RoadTrip r = RoadTripPlanner.plan(
+                places,
+                towns,
+                id -> id.equals(closed.id()) ? new PlaceHours("Su 10:00-17:00", "VERIFIED") : null,
+                travel,
+                request("\"interests\":{\"heritage\":5,\"beach\":1},\"maxDrivingHoursPerDay\":12,"
+                        + "\"dayEnd\":\"23:00\",\"maxDetours\":2,\"maxDetourMinutes\":40"));
+        assertEquals(List.of("Open Beach"), names(r, "DETOUR"), r.warnings().toString());
+        assertTrue(
+                r.warnings()
+                        .contains("Detour Sunday Fort dropped: Detour Sunday Fort is closed when you would arrive."),
+                r.warnings().toString());
     }
 
     @Test

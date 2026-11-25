@@ -241,13 +241,17 @@ public final class RoadTripPlanner {
         }
     }
 
-    /** Outcome of one day simulation; {@code conflict} non-null when infeasible. */
+    /**
+     * Outcome of one day simulation; {@code conflict} non-null when infeasible. {@code culprit} is the detour that
+     * caused the conflict, when one detour did.
+     */
     record Sim(
             String conflict,
             List<String> relaxations,
             List<DayAcc> days,
             Map<Integer, List<Node>> paths,
-            LocalDateTime arrival) {
+            LocalDateTime arrival,
+            Node culprit) {
         boolean ok() {
             return conflict == null;
         }
@@ -344,9 +348,13 @@ public final class RoadTripPlanner {
             Sim res = simulate(chosen);
             while (!chosen.isEmpty()
                     && (!res.ok() || res.days().size() > base.days().size())) {
-                Node drop = chosen.stream()
-                        .min(Comparator.comparingDouble((Node n) -> n.value).thenComparing(n -> n.name))
-                        .orElseThrow();
+                // Drop the detour that failed; otherwise (late arrival, extra day) the least valuable one.
+                Node drop = chosen.contains(res.culprit())
+                        ? res.culprit()
+                        : chosen.stream()
+                                .min(Comparator.comparingDouble((Node n) -> n.value)
+                                        .thenComparing(n -> n.name))
+                                .orElseThrow();
                 String why = !res.ok() ? res.conflict() : "it would add a driving day";
                 warnings.add("Detour " + drop.name + " dropped: " + why);
                 chosen = new ArrayList<>(chosen);
@@ -873,10 +881,10 @@ public final class RoadTripPlanner {
                         OpeningHours oh = ph == null ? null : OpeningHours.parse(ph.raw());
                         if (oh != null) {
                             start = oh.earliestStart(st.date.getDayOfWeek(), st.clock, v.visit);
-                            if (start < 0) return fail("Detour " + v.name + " is closed when you would arrive.", st);
+                            if (start < 0) return fail("Detour " + v.name + " is closed when you would arrive.", st, v);
                         }
                         if (start + v.visit > dayEnd())
-                            return fail("Detour " + v.name + " does not fit before " + req.dayEnd() + ".", st);
+                            return fail("Detour " + v.name + " does not fit before " + req.dayEnd() + ".", st, v);
                         day.items.add(at(
                                 "DETOUR",
                                 v,
@@ -923,8 +931,9 @@ public final class RoadTripPlanner {
                                 "Remove waypoints or stays."),
                         days,
                         paths,
-                        arrival);
-            return new Sim(null, List.of(), days, paths, arrival);
+                        arrival,
+                        null);
+            return new Sim(null, List.of(), days, paths, arrival, null);
         }
 
         void lunchAtStop(State st, DayAcc day) {
@@ -940,6 +949,10 @@ public final class RoadTripPlanner {
         }
 
         Sim fail(String conflict, State st) {
+            return fail(conflict, st, null);
+        }
+
+        Sim fail(String conflict, State st, Node culprit) {
             return new Sim(
                     conflict,
                     List.of(
@@ -948,7 +961,8 @@ public final class RoadTripPlanner {
                             "Remove waypoints or detours."),
                     List.of(),
                     Map.of(),
-                    null);
+                    null,
+                    culprit);
         }
 
         /** Accommodation reachable within today's limits that leaves the least driving to {@code v}. */
