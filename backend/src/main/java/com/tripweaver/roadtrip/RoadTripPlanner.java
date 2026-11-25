@@ -626,8 +626,8 @@ public final class RoadTripPlanner {
         /** Things to do around a town stay that match the interests; every one when no interest is chosen. */
         int matches(Node t) {
             return (int) t.sights.stream()
-                    .filter(p -> req.interests().isEmpty()
-                            || p.interests().stream().anyMatch(req.interests()::containsKey))
+                    .filter(p ->
+                            req.interests().isEmpty() || p.interests().stream().anyMatch(req.interests()::containsKey))
                     .count();
         }
 
@@ -1116,7 +1116,8 @@ public final class RoadTripPlanner {
             boolean stay = req.stayDays() > 0;
             boolean arrivalInStay = stay && StayPlanner.arrivalDayCounts(arrival);
             if (stay) {
-                String where = req.destination().name() == null || req.destination().name().isBlank()
+                String where = req.destination().name() == null
+                                || req.destination().name().isBlank()
                         ? "the destination"
                         : req.destination().name();
                 int stayNights = StayPlanner.nights(req.stayDays(), arrival);

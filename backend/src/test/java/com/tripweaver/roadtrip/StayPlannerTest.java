@@ -49,8 +49,8 @@ class StayPlannerTest {
 
     @Test
     void requestCarriesInputsAndDefaultsInterests() {
-        RoadTripRequest r = req(",\"stayDays\":2,\"partySize\":3,\"foodPerPersonPerDay\":900,"
-                + "\"accommodationPerNight\":4000");
+        RoadTripRequest r =
+                req(",\"stayDays\":2,\"partySize\":3,\"foodPerPersonPerDay\":900," + "\"accommodationPerNight\":4000");
         ItineraryRequest i = StayPlanner.request(r, r.destination(), at("2026-12-15T09:06"), "goa", 7);
         assertEquals("goa", i.destination());
         assertEquals(LocalDate.of(2026, 12, 15), i.startDate());

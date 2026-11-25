@@ -39,7 +39,9 @@ public final class StayPlanner {
     }
 
     public static LocalDate firstDay(LocalDateTime arrival) {
-        return arrivalDayCounts(arrival) ? arrival.toLocalDate() : arrival.toLocalDate().plusDays(1);
+        return arrivalDayCounts(arrival)
+                ? arrival.toLocalDate()
+                : arrival.toLocalDate().plusDays(1);
     }
 
     /** Start of stay day 1 when it is the arrival day; null when the stay starts the next morning. */
@@ -101,6 +103,7 @@ public final class StayPlanner {
             RoadTripRequest req, LocalDateTime arrival, String destination, Itinerary itinerary, String note) {
         LocalDate first = firstDay(arrival);
         LocalDate last = first.plusDays(req.stayDays() - 1L);
-        return new RoadTrip.Stay(req.stayDays(), first, last, nights(req.stayDays(), arrival), destination, itinerary, note);
+        return new RoadTrip.Stay(
+                req.stayDays(), first, last, nights(req.stayDays(), arrival), destination, itinerary, note);
     }
 }

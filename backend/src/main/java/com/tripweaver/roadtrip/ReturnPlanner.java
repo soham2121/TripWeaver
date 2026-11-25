@@ -52,9 +52,19 @@ public final class ReturnPlanner {
                 .reduce((a, b) -> b)
                 .orElseThrow();
         var from = new RoadTripRequest.Waypoint(
-                name(out.destination(), arrive), arrive.lat(), arrive.lon(), out.destination().placeId(), null, null);
+                name(out.destination(), arrive),
+                arrive.lat(),
+                arrive.lon(),
+                out.destination().placeId(),
+                null,
+                null);
         var to = new RoadTripRequest.Waypoint(
-                name(out.origin(), depart), depart.lat(), depart.lon(), out.origin().placeId(), null, null);
+                name(out.origin(), depart),
+                depart.lat(),
+                depart.lon(),
+                out.origin().placeId(),
+                null,
+                null);
         LocalDate date = departure(outbound);
 
         List<RoadTrip.ReturnOption> options = new ArrayList<>();
@@ -69,13 +79,16 @@ public final class ReturnPlanner {
         List<RoadTripRequest.Waypoint> back = new ArrayList<>();
         for (RoadTrip.Item i : items(outbound))
             switch (i.type()) {
-                case "WAYPOINT", "DETOUR" -> back.add(new RoadTripRequest.Waypoint(
-                        i.name(), i.lat(), i.lon(), i.placeId(), null, i.minutes() > 0 ? i.minutes() : null));
+                case "WAYPOINT", "DETOUR" ->
+                    back.add(new RoadTripRequest.Waypoint(
+                            i.name(), i.lat(), i.lon(), i.placeId(), null, i.minutes() > 0 ? i.minutes() : null));
                 case "OVERNIGHT" -> {
                     RoadTripRequest.Waypoint prev = back.isEmpty() ? null : back.getLast();
                     if (prev != null && same(prev, i))
-                        back.set(back.size() - 1, new RoadTripRequest.Waypoint(
-                                prev.name(), prev.lat(), prev.lon(), prev.placeId(), true, prev.stayMinutes()));
+                        back.set(
+                                back.size() - 1,
+                                new RoadTripRequest.Waypoint(
+                                        prev.name(), prev.lat(), prev.lon(), prev.placeId(), true, prev.stayMinutes()));
                     else back.add(new RoadTripRequest.Waypoint(i.name(), i.lat(), i.lon(), i.placeId(), true, null));
                 }
                 default -> {}
@@ -114,8 +127,9 @@ public final class ReturnPlanner {
         String freshNote = null;
         try {
             freshPlan = leg.apply(fresh);
-            if (directPlan != null && detours(freshPlan) == 0 && overnights(freshPlan).equals(overnights(directPlan)))
-                freshNote = NO_NEW_STOPS;
+            if (directPlan != null
+                    && detours(freshPlan) == 0
+                    && overnights(freshPlan).equals(overnights(directPlan))) freshNote = NO_NEW_STOPS;
         } catch (RuntimeException e) {
             freshPlan = null;
             freshNote = reason(e);
@@ -141,7 +155,12 @@ public final class ReturnPlanner {
             lastError = note[0];
         }
         if (four == null)
-            four = new RoadTrip.ReturnOption(4, "DIFFERENT_TOWN", "Through a different town", null, null,
+            four = new RoadTrip.ReturnOption(
+                    4,
+                    "DIFFERENT_TOWN",
+                    "Through a different town",
+                    null,
+                    null,
                     candidates.isEmpty() ? NO_TOWN : lastError);
         options.add(four);
 
@@ -160,7 +179,9 @@ public final class ReturnPlanner {
         List<List<double[]>> polys = new ArrayList<>();
         for (RoadTrip.Segment s : outbound.segments())
             if (s.route() != null && !s.route().geometry().isEmpty())
-                polys.add(s.route().geometry().stream().map(c -> new double[] {c[1], c[0]}).toList());
+                polys.add(s.route().geometry().stream()
+                        .map(c -> new double[] {c[1], c[0]})
+                        .toList());
         double direct = Geo.haversineKm(from.lat(), from.lon(), to.lat(), to.lon());
         record Candidate(Town town, double offKm) {}
         List<Candidate> found = new ArrayList<>();
@@ -169,7 +190,8 @@ public final class ReturnPlanner {
                     + Geo.haversineKm(t.lat(), t.lon(), to.lat(), to.lon());
             if (via > MAX_DETOUR_FACTOR * direct) continue;
             double off = Double.MAX_VALUE;
-            for (List<double[]> p : polys) off = Math.min(off, RoadTripPlanner.distanceToPolyline(p, t.lat(), t.lon())[0]);
+            for (List<double[]> p : polys)
+                off = Math.min(off, RoadTripPlanner.distanceToPolyline(p, t.lat(), t.lon())[0]);
             if (off >= MIN_OFF_ROUTE_KM) found.add(new Candidate(t, off));
         }
         return found.stream()
@@ -196,7 +218,9 @@ public final class ReturnPlanner {
     }
 
     static boolean same(RoadTripRequest.Waypoint w, RoadTrip.Item i) {
-        return w.lat() != null && i.lat() != null && Math.abs(w.lat() - i.lat()) < 1e-6
+        return w.lat() != null
+                && i.lat() != null
+                && Math.abs(w.lat() - i.lat()) < 1e-6
                 && Math.abs(w.lon() - i.lon()) < 1e-6;
     }
 

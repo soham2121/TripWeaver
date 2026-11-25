@@ -197,8 +197,11 @@ class RoadTripPlannerTest {
         assertEquals(RoadTripPlanner.detourRating(busy.detourMinutes()), busy.detourRating());
         assertEquals(20, busy.interestMatches()); // no interests chosen: every heritage sight counts
         assertEquals(5, busy.interestRating());
-        RoadTrip.TownOption beachOnly = plan(split + ",\"interests\":{\"beach\":5}").stayOptions().getFirst()
-                .options().stream().filter(x -> x.town().equals("Busy")).findFirst().orElseThrow();
+        RoadTrip.TownOption beachOnly =
+                plan(split + ",\"interests\":{\"beach\":5}").stayOptions().getFirst().options().stream()
+                        .filter(x -> x.town().equals("Busy"))
+                        .findFirst()
+                        .orElseThrow();
         assertEquals(0, beachOnly.interestRating());
 
         // The user's pick from the options replaces the top town.

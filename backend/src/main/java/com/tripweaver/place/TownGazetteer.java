@@ -67,8 +67,10 @@ public class TownGazetteer {
             for (Path f : files.filter(p -> p.getFileName().toString().endsWith("-osm-extract.json"))
                     .sorted()
                     .toList())
-                for (OsmExtract.Feature s : json.readValue(f.toFile(), OsmExtract.class).settlements())
-                    if (LOCALITY_KINDS.contains(s.tags().get("place")) && s.tags().containsKey("name")) {
+                for (OsmExtract.Feature s :
+                        json.readValue(f.toFile(), OsmExtract.class).settlements())
+                    if (LOCALITY_KINDS.contains(s.tags().get("place"))
+                            && s.tags().containsKey("name")) {
                         Town t = TownGazetteerTool.town(s.tags(), s.lat(), s.lon());
                         out.putIfAbsent(t.key(), t);
                     }

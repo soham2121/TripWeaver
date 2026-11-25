@@ -97,13 +97,15 @@ class RoadTripApiTest {
     }
 
     JsonNode trip(String body) throws Exception {
-        String s = plan(body).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String s =
+                plan(body).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return json.readTree(s).get("roadTrip");
     }
 
     @Test
     void stayAtTheDestinationIsPlannedWithTheTrip() throws Exception {
-        JsonNode stay = trip(MUMBAI_TO_CANDOLIM + ",\"stayDays\":2,\"maxDrivingHoursPerDay\":6").get("stay");
+        JsonNode stay = trip(MUMBAI_TO_CANDOLIM + ",\"stayDays\":2,\"maxDrivingHoursPerDay\":6")
+                .get("stay");
         assertEquals(2, stay.get("days").asInt());
         assertEquals("goa", stay.get("destination").asString());
         JsonNode days = stay.get("itinerary").get("days");
@@ -140,11 +142,14 @@ class RoadTripApiTest {
 
     @Test
     void noStayByDefault() throws Exception {
-        assertTrue(trip(MUMBAI_TO_CANDOLIM + ",\"maxDrivingHoursPerDay\":6").get("stay").isNull());
+        assertTrue(trip(MUMBAI_TO_CANDOLIM + ",\"maxDrivingHoursPerDay\":6")
+                .get("stay")
+                .isNull());
     }
 
     static JsonNode line(JsonNode trip, String item) {
-        for (JsonNode l : trip.get("budget").get("lines")) if (l.get("item").asString().equals(item)) return l;
+        for (JsonNode l : trip.get("budget").get("lines"))
+            if (l.get("item").asString().equals(item)) return l;
         return null;
     }
 
@@ -159,10 +164,17 @@ class RoadTripApiTest {
 
         JsonNode withStay = trip(MUMBAI_TO_CANDOLIM + costs + ",\"stayDays\":2");
         JsonNode stay = withStay.get("stay");
-        assertTrue(withStay.get("arrival").asString().compareTo(stay.get("firstDay").asString() + "T14:00") <= 0,
+        assertTrue(
+                withStay.get("arrival")
+                                .asString()
+                                .compareTo(stay.get("firstDay").asString() + "T14:00")
+                        <= 0,
                 "the demo arrives by 14:00, so the arrival day is stay day 1");
-        assertEquals(500.0 * 2 * (driveDays - 1), line(withStay, "Food").get("max").asDouble());
-        assertEquals(stay.get("nights").asInt() * 4000.0, line(withStay, "Stay at Candolim").get("max").asDouble());
+        assertEquals(
+                500.0 * 2 * (driveDays - 1), line(withStay, "Food").get("max").asDouble());
+        assertEquals(
+                stay.get("nights").asInt() * 4000.0,
+                line(withStay, "Stay at Candolim").get("max").asDouble());
     }
 
     @Test
@@ -174,15 +186,20 @@ class RoadTripApiTest {
         for (JsonNode o : rt.get("options")) kinds.add(o.get("kind").asString());
         assertEquals(List.of("DIRECT", "SAME_WAY", "NEW_STOPS", "DIFFERENT_TOWN"), kinds);
         JsonNode direct = rt.get("options").get(0).get("plan");
-        java.time.LocalDate last = java.time.LocalDate.parse(r.get("stay").get("lastDay").asString());
-        assertEquals(last.plusDays(1).toString(), direct.get("days").get(0).get("date").asString());
+        java.time.LocalDate last =
+                java.time.LocalDate.parse(r.get("stay").get("lastDay").asString());
+        assertEquals(
+                last.plusDays(1).toString(),
+                direct.get("days").get(0).get("date").asString());
         JsonNode lastDay = direct.get("days").get(direct.get("days").size() - 1);
         JsonNode lastItem = lastDay.get("items").get(lastDay.get("items").size() - 1);
         assertEquals("ARRIVE", lastItem.get("type").asString());
         assertTrue(lastItem.get("name").asString().contains("Mumbai"));
         JsonNode four = rt.get("options").get(3);
         assertFalse(four.get("via").isNull(), four.toString());
-        assertFalse(four.get("plan").isNull(), four.get("via").asString() + ": " + four.get("note").asString());
+        assertFalse(
+                four.get("plan").isNull(),
+                four.get("via").asString() + ": " + four.get("note").asString());
         boolean through = false;
         for (JsonNode d : four.get("plan").get("days"))
             for (JsonNode it : d.get("items"))
@@ -212,6 +229,8 @@ class RoadTripApiTest {
 
     @Test
     void noReturnByDefault() throws Exception {
-        assertTrue(trip(MUMBAI_TO_CANDOLIM + ",\"maxDrivingHoursPerDay\":6").get("returnTrip").isNull());
+        assertTrue(trip(MUMBAI_TO_CANDOLIM + ",\"maxDrivingHoursPerDay\":6")
+                .get("returnTrip")
+                .isNull());
     }
 }

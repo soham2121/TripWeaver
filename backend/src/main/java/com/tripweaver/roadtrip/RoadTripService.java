@@ -49,8 +49,13 @@ public class RoadTripService {
         s.put("totalKm", r.totalKm());
         s.put("travelProvider", r.travelProvider());
         s.put("stayDays", req.stayDays());
-        s.put("returnOptions", r.returnTrip() == null ? 0
-                : r.returnTrip().options().stream().filter(o -> o.plan() != null).count());
+        s.put(
+                "returnOptions",
+                r.returnTrip() == null
+                        ? 0
+                        : r.returnTrip().options().stream()
+                                .filter(o -> o.plan() != null)
+                                .count());
         UUID runId = runs.record(
                 "road-trip", null, "road-trip-detours+day-split", r.detourCandidates(), r.seed(), micros, s);
         return new Response(runId, micros, r);
@@ -71,7 +76,11 @@ public class RoadTripService {
         var b = new RoadTripRequest.Waypoint(name, arrive.lat(), arrive.lon(), d.placeId(), null, null);
         var dest = catalogue.destinationNear(b.lat(), b.lon(), STAY_DATA_KM);
         if (dest.isEmpty())
-            return r.withStay(StayPlanner.stay(req, r.arrival(), null, null,
+            return r.withStay(StayPlanner.stay(
+                    req,
+                    r.arrival(),
+                    null,
+                    null,
                     "No place data near " + name + ": the stay is counted, but its days are not planned."));
         try {
             var it = ItineraryPlanner.plan(

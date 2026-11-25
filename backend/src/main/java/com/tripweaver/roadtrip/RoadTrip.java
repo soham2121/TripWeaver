@@ -36,15 +36,45 @@ public record RoadTrip(
     /** This trip with its stay at the destination. */
     public RoadTrip withStay(Stay s) {
         return new RoadTrip(
-                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
-                detourCandidates, warnings, travelProvider, travelBasis, disclaimer, seed, s, returnTrip);
+                days,
+                segments,
+                budget,
+                departure,
+                arrival,
+                totalDrivingMinutes,
+                totalKm,
+                nights,
+                stayOptions,
+                detourCandidates,
+                warnings,
+                travelProvider,
+                travelBasis,
+                disclaimer,
+                seed,
+                s,
+                returnTrip);
     }
 
     /** This trip with its ways home. */
     public RoadTrip withReturn(ReturnTrip r) {
         return new RoadTrip(
-                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
-                detourCandidates, warnings, travelProvider, travelBasis, disclaimer, seed, stay, r);
+                days,
+                segments,
+                budget,
+                departure,
+                arrival,
+                totalDrivingMinutes,
+                totalKm,
+                nights,
+                stayOptions,
+                detourCandidates,
+                warnings,
+                travelProvider,
+                travelBasis,
+                disclaimer,
+                seed,
+                stay,
+                r);
     }
 
     /** This trip with more warnings. */
@@ -52,8 +82,23 @@ public record RoadTrip(
         List<String> w = new java.util.ArrayList<>(warnings);
         w.addAll(more);
         return new RoadTrip(
-                days, segments, budget, departure, arrival, totalDrivingMinutes, totalKm, nights, stayOptions,
-                detourCandidates, List.copyOf(w), travelProvider, travelBasis, disclaimer, seed, stay, returnTrip);
+                days,
+                segments,
+                budget,
+                departure,
+                arrival,
+                totalDrivingMinutes,
+                totalKm,
+                nights,
+                stayOptions,
+                detourCandidates,
+                List.copyOf(w),
+                travelProvider,
+                travelBasis,
+                disclaimer,
+                seed,
+                stay,
+                returnTrip);
     }
 
     /** The ways home; {@code chosen} is the option shown (1..4). */

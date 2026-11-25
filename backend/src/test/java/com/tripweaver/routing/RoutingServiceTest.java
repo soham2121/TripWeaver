@@ -113,7 +113,9 @@ class RoutingServiceTest {
     static int[] indices(String query, String key, int n) {
         for (String kv : query.split("&"))
             if (kv.startsWith(key + "="))
-                return Arrays.stream(kv.substring(key.length() + 1).split(";")).mapToInt(Integer::parseInt).toArray();
+                return Arrays.stream(kv.substring(key.length() + 1).split(";"))
+                        .mapToInt(Integer::parseInt)
+                        .toArray();
         return java.util.stream.IntStream.range(0, n).toArray();
     }
 

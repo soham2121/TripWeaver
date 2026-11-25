@@ -51,10 +51,14 @@ class ReturnPlannerTest {
         assertEquals(
                 List.of("DIRECT", "SAME_WAY", "NEW_STOPS", "DIFFERENT_TOWN"),
                 rt.options().stream().map(RoadTrip.ReturnOption::kind).toList());
-        assertEquals(List.of(1, 2, 3, 4), rt.options().stream().map(RoadTrip.ReturnOption::number).toList());
+        assertEquals(
+                List.of(1, 2, 3, 4),
+                rt.options().stream().map(RoadTrip.ReturnOption::number).toList());
         assertEquals(
                 List.of("Direct", "Same way back", "Same road, new stops"),
-                rt.options().subList(0, 3).stream().map(RoadTrip.ReturnOption::label).toList());
+                rt.options().subList(0, 3).stream()
+                        .map(RoadTrip.ReturnOption::label)
+                        .toList());
         assertEquals("Destination", legs.getFirst().origin().name());
         assertEquals("Origin", legs.getFirst().destination().name());
         assertTrue(legs.getFirst().waypoints().isEmpty());
@@ -102,13 +106,15 @@ class ReturnPlannerTest {
         legs.clear();
         RoadTripRequest none = fx.request(SPLIT);
         ReturnPlanner.plan(none, fx.plan(none), fx.towns, leg());
-        assertEquals(Set.copyOf(OsmCategoryMapper.INTERESTS), legs.get(2).interests().keySet());
+        assertEquals(
+                Set.copyOf(OsmCategoryMapper.INTERESTS), legs.get(2).interests().keySet());
     }
 
     @Test
     void noNewStopsIsSaid() {
         RoadTripRequest req = fx.request(ONE_DAY);
-        RoadTrip.ReturnOption o = ReturnPlanner.plan(req, fx.plan(req), fx.towns, leg()).options().get(2);
+        RoadTrip.ReturnOption o =
+                ReturnPlanner.plan(req, fx.plan(req), fx.towns, leg()).options().get(2);
         assertNotNull(o.plan());
         assertEquals("No new stops found on this road", o.note());
     }
@@ -119,12 +125,14 @@ class ReturnPlannerTest {
         fx.towns.add(town("Remote", 3.0)); // ≈ 320 km off: far more than a third extra
         RoadTripRequest req = fx.request(ONE_DAY);
         RoadTrip out = fx.plan(req);
-        RoadTrip.ReturnOption none = ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(3);
+        RoadTrip.ReturnOption none =
+                ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(3);
         assertNull(none.plan());
         assertEquals("No town off the outbound road within a third more driving", none.note());
 
         fx.towns.add(town("Inland", 0.8)); // ≈ 85 km off, ≈ 10% extra
-        RoadTrip.ReturnOption via = ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(3);
+        RoadTrip.ReturnOption via =
+                ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(3);
         assertEquals("Inland", via.via());
         assertEquals("Through Inland", via.label());
         assertNotNull(via.plan());
@@ -180,7 +188,8 @@ class ReturnPlannerTest {
         RoadTripRequest req = fx.request("\"drivingDays\":2," + ONE_DAY);
         RoadTrip out = fx.plan(req);
         assertEquals(2, out.days().size());
-        RoadTrip same = ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(1).plan();
+        RoadTrip same =
+                ReturnPlanner.plan(req, out, fx.towns, leg()).options().get(1).plan();
         assertEquals(2, same.days().size(), "no extra town night on top of the reversed one");
         assertEquals(
                 out.days().getFirst().overnight().name(),
