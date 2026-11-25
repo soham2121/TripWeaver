@@ -23,7 +23,23 @@ The full specification is in [`IMPLEMENTATION.md`](IMPLEMENTATION.md). Phase sta
 - **Honest labels:** every cost and fact carries its source and confidence. Unknown costs are never shown as ₹0.
 - **Light and dark themes:** follows the system setting; the header toggle remembers your choice.
 
-Submission: [`docs/PROPOSAL.md`](docs/PROPOSAL.md), [`docs/REPORT.md`](docs/REPORT.md), [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md), screenshots in [`docs/screenshots/`](docs/screenshots/).
+Submission: [`docs/submit/`](docs/submit/) (project proposal and technical report as Word files, plus the showcase and explainer videos). Markdown versions: [`docs/PROPOSAL.md`](docs/PROPOSAL.md), [`docs/REPORT.md`](docs/REPORT.md). Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/home-dark.jpg" alt="Home page with the three planning modes and demo scenarios (dark theme)" width="49%">
+  <img src="docs/screenshots/discover-trie-autocomplete-light.jpg" alt="Discover page with Trie autocomplete suggestions (light theme)" width="49%">
+</p>
+<p>
+  <img src="docs/screenshots/plan-four-day-overview-dark.jpg" alt="Four-day Goa plan: overview with map, coverage and budget" width="49%">
+  <img src="docs/screenshots/plan-four-day-timeline-dark.jpg" alt="Four-day Goa plan: one day's timeline ordered by Double-Tree" width="49%">
+</p>
+<p>
+  <img src="docs/screenshots/road-trip-mumbai-goa-dark.jpg" alt="Road trip from Mumbai to Goa with detours and driving limits" width="49%">
+</p>
+
+Home and modes · Discover with Trie autocomplete · four-day plan overview · day timeline · Mumbai–Goa road trip. All files are in [`docs/screenshots/`](docs/screenshots/).
 
 Algorithm details: [`docs/ALGORITHM_DESIGN.md`](docs/ALGORITHM_DESIGN.md). Tests: [`docs/CORRECTNESS.md`](docs/CORRECTNESS.md). API: [`docs/API_SPEC.md`](docs/API_SPEC.md). Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
@@ -94,6 +110,55 @@ Vercel serves the React app. The Java API runs on Render as a Docker web service
 - **Navigation:** "Open in Google Maps" links are plain directions URLs built from coordinates. No Google API, key or account is involved, and TripWeaver reads nothing back.
 - TripWeaver does not use the Google Places API (decision D39).
 
+## Sample data
+
+The data the app and its tests use is committed, so a fresh clone runs without downloading anything:
+
+| Path | Contents |
+|---|---|
+| [`data/sample/goa-osm-extract.json`](data/sample/goa-osm-extract.json) | OpenStreetMap places, settlements and the state boundary for Goa (about 5,200 places after import) |
+| [`data/sample/konkan-osm-extract.json`](data/sample/konkan-osm-extract.json) | The Mumbai–Goa road-trip corridor (about 6,300 places, including places to stay) |
+| [`data/sample/towns-gazetteer.json`](data/sample/towns-gazetteer.json) | Towns used to name road-trip stops |
+| [`data/curated/`](data/curated/) | Official entry fees and opening hours, each with a source URL, confidence and verification date; region outlines |
+
+On an empty database the backend imports these files on start. Backend tests use a small in-code catalogue ([`TestCatalogue`](backend/src/test/java/com/tripweaver/support/TestCatalogue.java)) on in-memory H2, and the import tests read the real extracts. Licence and provenance: [`data/sample/README.md`](data/sample/README.md) and [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). The raw `.osm.pbf` is not committed; it is only needed to regenerate the extracts or to build OSRM.
+
+## API examples
+
+Base URL `http://localhost:8088/api/v1` locally (the hosted API is `https://tripweaver-jo2x.onrender.com/api/v1`). Every field and error code is in [`docs/API_SPEC.md`](docs/API_SPEC.md).
+
+```bash
+API=http://localhost:8088/api/v1
+
+# Health
+curl "$API/health"
+# {"time":"…","service":"tripweaver","status":"UP"}
+
+# Trie autocomplete
+curl "$API/places/autocomplete?q=agu&limit=3"
+# [{"type":"PLACE","label":"Café Aguada",…},{"type":"PLACE","label":"Fort Aguada",…},…]
+
+# Recommendations: Quickselect pruning + lazy-greedy Set Cover
+curl -X POST "$API/recommendations/preview" -H 'Content-Type: application/json' \
+  -d '{"interests":{"beach":5,"food":4,"heritage":4},"baseLat":15.5202,"baseLon":73.7659,"seed":42}'
+# result.coverage.covered = ["beach","food","heritage"], result.coverage.lazyEqualsFull = true
+
+# Two-day itinerary from Candolim, each day ordered by Double-Tree
+curl -X POST "$API/itineraries/generate" -H 'Content-Type: application/json' \
+  -d '{"baseLat":15.5202,"baseLon":73.7659,"baseName":"Candolim stay","startDate":"2026-12-14","days":2,
+       "partySize":2,"interests":{"beach":5,"food":4,"heritage":4},"pace":"BALANCED","seed":42}'
+# itinerary.days[].stops[] with times; itinerary.days[].ordering.applied = "DOUBLE_TREE"
+
+# Road trip, Mumbai to Candolim
+curl -X POST "$API/road-trips/plan" -H 'Content-Type: application/json' \
+  -d '{"origin":{"name":"Mumbai (CSMT)","lat":18.9398,"lon":72.8355},
+       "destination":{"name":"Candolim","lat":15.5202,"lon":73.7659},
+       "departureDate":"2026-12-14","departureTime":"07:00","interests":{"heritage":5,"beach":4},"seed":42}'
+# roadTrip.days[] with DRIVE, REST, MEAL and ARRIVE items; roadTrip.totalKm about 530
+```
+
+The same `seed` gives the same plan. Saving and sharing trips needs a signed-in session; see "Trips and collaboration" in the API spec.
+
 ## Tests and checks
 
 ```bash
@@ -106,7 +171,7 @@ cd frontend && npm run format      # Prettier
 cd frontend && npm run build       # type-check + production build
 ```
 
-Current suite: 216 backend tests and 36 frontend tests.
+Current suite (25 November 2026): 250 backend tests and 65 frontend tests, all passing.
 
 ## Project layout
 
