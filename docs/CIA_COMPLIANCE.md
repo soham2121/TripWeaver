@@ -11,7 +11,7 @@ Maps each CIA requirement to evidence in the repository. A row is marked done on
 | Original Java implementations | `backend/src/main/java/com/tripweaver/algorithms/**` | Done; `AlgorithmIsolationTest` |
 | Algorithms used in the product, not only in tests | Trie: search and autocomplete (Phase 4). Quickselect + Set Cover + Heap: recommendations and itinerary selection (Phases 5–6). Double-Tree: daily stop order with metric check (Phase 7) and road-trip detour order (Phase 8) | Done |
 | Real or realistic synthetic data | Real OSM Goa catalogue (5,192 places) plus official curated fields; Konkan corridor (6,283 places). See `docs/DATA_SOURCES.md` | Done (Phases 3, 8) |
-| ≥5 correctness tests per core algorithm, including edge cases | `docs/CORRECTNESS.md`: Trie 12, Quickselect 15, Set Cover 15, Heap 10, TSP 12. Also product-level tests (216 backend tests in total) | Done |
+| ≥5 correctness tests per core algorithm, including edge cases | `docs/CORRECTNESS.md`: Trie 12, Quickselect 15, Set Cover 15, Heap 10, TSP 12. Also product-level tests (250 backend tests in total) | Done |
 | Benchmarks at ≥3 increasing sizes | `docs/BENCHMARKS.md`, raw CSV, charts. Trie 1K–1M; Quickselect 1K–1M; Set Cover 20–500 (two universe sizes); Heap 1K–500K ops; TSP 10–200 stops | Done |
 | Baseline comparison | Trie vs linear scan; Quickselect vs sort; Set Cover lazy vs full greedy, vs exact optimum and vs cheapest-first; Heap vs linear scan; TSP vs Nearest-Neighbour and Held–Karp | Done |
 | Working product demo | Home modes and five demo scenarios, including the §18 four-day scenario; saved and shared trips. The demo works without provider keys. Script: `docs/DEMO_SCRIPT.md`. Browser re-test passed 2026-11-24 | Done; owner rehearsal pending |

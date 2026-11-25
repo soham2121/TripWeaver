@@ -51,7 +51,7 @@ The multi-day scheduler around them (insertion with repair) is a documented heur
 
 - **Backend:** Java (Spring Boot 4, built for Java 21), JDBC and Flyway.
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS and MapLibre GL, with light and dark themes.
-- **Tests:** JUnit (216 backend tests, run on in-memory H2) and Vitest (40 frontend tests).
+- **Tests:** JUnit (250 backend tests, run on in-memory H2) and Vitest (65 frontend tests).
 
 ## 6. Evaluation plan
 

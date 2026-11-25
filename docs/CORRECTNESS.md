@@ -130,7 +130,7 @@ This test fails if any algorithm source imports Spring, Jakarta/JPA or the HTTP 
 
 ## Product-level tests (Phases 3–10)
 
-These tests check how the algorithms are used in the product, beyond the per-algorithm tests above. Counts come from the last full run (2026-11-24): 216 backend tests, 0 failures.
+These tests check how the algorithms are used in the product, beyond the per-algorithm tests above. Counts come from the last full run (2026-11-25): 250 backend tests, 0 failures.
 
 | Test class | Tests | What it shows |
 |---|---|---|
@@ -147,4 +147,4 @@ These tests check how the algorithms are used in the product, beyond the per-alg
 | `place.TownGazetteerTest` | 1 | Town search with aliases (Alibaug → Alibag), cities first |
 | `integration.NoGoogleDependencyTest` | 3 | No Google API host, SDK, key or dependency (D39); only the directions URL builder mentions google.com |
 
-Frontend (`npm test`, 36 tests, including 2 that check no Google API in sources or packages) covers the wizard, the timeline, budget labels, the workload bars and every edit action. It also covers the road-trip page, the home modes, sign-in, saving a trip, the trip page by role (owner, editor, viewer), version conflicts, votes and expenses, and the public shared page.
+Frontend (`npm test`, 65 tests, including 2 that check no Google API in sources or packages) covers the wizard, the timeline, budget labels, the workload bars and every edit action. It also covers the road-trip page, the home modes, sign-in, saving a trip, the trip page by role (owner, editor, viewer), version conflicts, votes and expenses, and the public shared page.

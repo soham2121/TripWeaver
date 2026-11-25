@@ -141,7 +141,7 @@ One simulation costs O(n); a greedy round costs O(C·D·n²). The insertion is m
 | Indexed Max Heap | 10 | Update up and down, ties by id, build O(n) equals repeated inserts, lazy greedy equals full greedy (400 instances) |
 | Metric TSP Double-Tree | 12 | Asymmetric or non-metric input gets no claim, n = 1 and 2, tour ≤ 2·exact (150 instances), open path |
 
-The backend has 216 tests in total, covering the product-level API, planner, road trips, collaboration, sharing and the absence of any Google dependency. They run on in-memory H2 with no network. The frontend has 40 component tests. A fresh `git clone` passed `./mvnw verify`, `npm ci`, the tests and the production build on 2026-11-24.
+The backend has 250 tests in total (run of 2026-11-25), covering the product-level API, planner, road trips, collaboration, sharing and the absence of any Google dependency. They run on in-memory H2 with no network. The frontend has 65 component tests. A fresh `git clone` passed `./mvnw verify`, `npm ci`, the tests and the production build on 2026-11-24.
 
 ## 6. Benchmarks
 
