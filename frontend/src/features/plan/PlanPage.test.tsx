@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
@@ -32,10 +32,20 @@ const bodyOf = (fetch: ReturnType<typeof mockApi>, call: number) =>
 const generateCalls = (fetch: ReturnType<typeof mockApi>) =>
   fetch.mock.calls.filter((c) => String(c[0]).includes('/itineraries/generate'))
 
+/** Fills the three mandatory steps: an interest, a start date, a budget. */
+async function completeWizard(interest = /beach/i, { date = true } = {}) {
+  await userEvent.click(screen.getByRole('checkbox', { name: interest }))
+  await userEvent.click(screen.getByRole('button', { name: /next/i }))
+  if (date)
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-14' } })
+  await userEvent.click(screen.getByRole('button', { name: /next/i }))
+  await userEvent.type(screen.getByLabelText(/budget/i), '5000')
+}
+
 async function planBeach() {
   const fetch = mockApi([[/\/itineraries\/generate$/, () => itineraryResponse()]])
   renderAt()
-  await userEvent.click(screen.getByRole('checkbox', { name: /beach/i }))
+  await completeWizard()
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   await screen.findByRole('list', { name: /day 1 stops/i })
   return fetch
@@ -49,6 +59,7 @@ test('wizard walks through interests, where and when, travel and budget', async 
   const days = screen.getByLabelText(/^days$/i)
   await userEvent.clear(days)
   await userEvent.type(days, '3')
+  fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-14' } })
   await userEvent.click(screen.getByRole('button', { name: /next/i }))
   await userEvent.type(screen.getByLabelText(/budget/i), '5000')
   await userEvent.click(screen.getByRole('checkbox', { name: /hard limit/i }))
@@ -146,7 +157,7 @@ test('provider fallback is labelled when road routing is unavailable', async () 
   r.itinerary.travelBasis = 'Straight-line estimate'
   mockApi([[/\/itineraries\/generate$/, () => r]])
   renderAt()
-  await userEvent.click(screen.getByRole('checkbox', { name: /beach/i }))
+  await completeWizard()
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   expect(await screen.findByText(/road routing unavailable/i)).toBeInTheDocument()
 })
@@ -155,7 +166,7 @@ test('today mode plans one day starting today', async () => {
   const fetch = mockApi([[/\/itineraries\/generate$/, () => itineraryResponse()]])
   renderAt('/plan?mode=today')
   expect(screen.getByRole('heading', { name: /plan today/i })).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('checkbox', { name: /heritage/i }))
+  await completeWizard(/heritage/i, { date: false })
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   await screen.findByRole('list', { name: /day 1 stops/i })
   const body = bodyOf(fetch, 0)
@@ -192,15 +203,28 @@ test('shows infeasible-plan conflicts and relaxations', async () => {
     ],
   ])
   renderAt()
-  await userEvent.click(screen.getByRole('checkbox', { name: /heritage/i }))
+  await completeWizard(/heritage/i)
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   expect(await screen.findByText(/Museum cannot fit/)).toBeInTheDocument()
   expect(screen.getByText(/Add a day/)).toBeInTheDocument()
 })
 
-test('needs at least one interest', () => {
+test('generate appears only after all three steps are filled in', async () => {
   renderAt()
-  expect(screen.getByRole('button', { name: /generate plan/i })).toBeDisabled()
+  const gen = () => screen.queryByRole('button', { name: /generate plan/i })
+  expect(gen()).toBeNull()
+  expect(screen.getByText(/choose at least one interest/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('checkbox', { name: /beach/i }))
+  expect(gen()).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: /next/i }))
+  expect(screen.getByText(/pick a start date/)).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-14' } })
+  expect(gen()).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: /next/i }))
+  expect(screen.getByText(/enter a budget/)).toBeInTheDocument()
+  await userEvent.type(screen.getByLabelText(/budget/i), '5000')
+  expect(gen()).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /3\. Travel and budget ✓/ })).toBeInTheDocument()
 })
 
 test('signed-in users save the plan as a trip', async () => {
@@ -224,7 +248,7 @@ test('signed-in users save the plan as a trip', async () => {
       </MemoryRouter>
     </AuthContext>,
   )
-  await userEvent.click(screen.getByRole('checkbox', { name: /beach/i }))
+  await completeWizard()
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   await userEvent.click(await screen.findByRole('button', { name: /save trip/i }))
   expect(await screen.findByText('Saved trip page')).toBeInTheDocument()

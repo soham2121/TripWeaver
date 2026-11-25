@@ -83,6 +83,12 @@ export function PlanPage() {
   )
   const [form, setForm] = useState<PlanForm>(initial.form)
   const [step, setStep] = useState(0)
+  /** Steps the user has opened; a demo arrives filled in, so it counts as all seen. */
+  const [seen, setSeen] = useState(() => new Set(demo ? [0, 1, 2] : [0]))
+  const goTo = (i: number) => {
+    setStep(i)
+    setSeen((s) => new Set(s).add(i))
+  }
   const [baseQuery, setBaseQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Itinerary | null>(null)
@@ -151,13 +157,27 @@ export function PlanPage() {
 
   const input = 'field'
 
+  // Every step is mandatory: the Generate button appears only once all three are complete.
+  const missing = [
+    Object.keys(form.weights).length === 0 && 'choose at least one interest',
+    !seen.has(1)
+      ? 'fill in where and when'
+      : !form.startDate
+        ? 'pick a start date'
+        : !today && form.days < 1 && 'set the number of days',
+    !seen.has(2)
+      ? 'fill in travel and budget'
+      : !(Number(form.budgetAmount) > 0) && 'enter a budget',
+  ]
+  const ready = missing.every((m) => !m)
+
   return (
     <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)] [&>*]:min-w-0">
       <form
         className="space-y-3 self-start card p-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
-          generate()
+          if (ready) generate()
         }}
       >
         <h1 className="text-xl font-bold">{today ? 'Plan today' : 'Plan a multi-day trip'}</h1>
@@ -168,10 +188,11 @@ export function PlanPage() {
               <button
                 type="button"
                 aria-current={i === step ? 'step' : undefined}
-                onClick={() => setStep(i)}
+                onClick={() => goTo(i)}
                 className={`rounded-full px-2.5 py-1 font-medium ${i === step ? 'bg-teal-700 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
               >
                 {i + 1}. {s}
+                {!missing[i] && ' ✓'}
               </button>
             </li>
           ))}
@@ -364,23 +385,25 @@ export function PlanPage() {
 
         <div className="flex gap-2">
           {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)} className="btn-secondary">
+            <button type="button" onClick={() => goTo(step - 1)} className="btn-secondary">
               Back
             </button>
           )}
           {step < STEPS.length - 1 && (
-            <button type="button" onClick={() => setStep(step + 1)} className="btn-secondary">
+            <button type="button" onClick={() => goTo(step + 1)} className="btn-secondary">
               Next
             </button>
           )}
         </div>
-        <button
-          type="submit"
-          disabled={loading || Object.keys(form.weights).length === 0}
-          className="w-full btn-primary"
-        >
-          {loading ? 'Planning…' : 'Generate plan'}
-        </button>
+        {ready ? (
+          <button type="submit" disabled={loading} className="w-full btn-primary">
+            {loading ? 'Planning…' : 'Generate plan'}
+          </button>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            To generate a plan: {missing.filter(Boolean).join(', ')}.
+          </p>
+        )}
       </form>
 
       <section aria-live="polite" aria-busy={loading}>
@@ -406,8 +429,8 @@ export function PlanPage() {
         {problem && <ProblemNotice problem={problem} />}
         {!result && !problem && !loading && (
           <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500">
-            Choose interests and generate a day-by-day plan. You can then lock, remove, replace or
-            move stops and replan.
+            Fill in all three steps and generate a day-by-day plan. You can then lock, remove,
+            replace or move stops and replan.
           </p>
         )}
         {result && lastRequest && (

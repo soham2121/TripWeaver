@@ -566,5 +566,6 @@ Bugs found and fixed:
   - the Mumbai–Goa road trip (labelled estimates, no OSRM);
   - an invalid share link (404);
   - a wrong login (401).
-- **Not checked live:** sign-in, saving and sharing with a real account. The Chrome extension was disconnected, and no account was created on the production site.
-- **Cleanup for later:** Spring logs an unused generated default-user password at startup (`UserDetailsServiceAutoConfiguration`). It is harmless, because the app has its own login, but it could be excluded.
+- **Checked live on 2026-11-25:** sign-in (owner's test account) without losing the plan, saving a road trip, and a read-only link (opened in a second tab, `GET /api/v1/shared/{token}` 200 with no cookie, then revoked: 404 `SHARE_LINK_INVALID`, and the page says "This link is invalid, revoked or expired"). No console errors.
+- **Map fallback seen:** "Map tiles are unavailable" appeared because a browser content blocker cancelled `tiles.openfreemap.org/planet` (`ERR_BLOCKED_BY_CLIENT`). It is not an app bug.
+- **Cleanup done (4f04f7f):** `UserDetailsServiceAutoConfiguration` excluded, so Spring no longer logs a generated password.
