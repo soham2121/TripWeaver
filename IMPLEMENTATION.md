@@ -4,9 +4,9 @@
 > **CIA:** Advanced Algorithm, Semester V, 2026–27
 > **Stack:** Java 21 (builds and runs on JDK 21 or newer) + Spring Boot, React + TypeScript, PostgreSQL
 > **Initial destination:** Goa, with an extensible India-wide data model
-> **Purpose:** Authoritative implementation specification for Claude Code
+> **Purpose:** Authoritative implementation specification
 
-# 0. Instructions to Claude Code
+# 0. Implementation instructions
 
 Read this entire file before substantial implementation. Treat it as the source of truth for product scope, algorithms, architecture, milestones and acceptance criteria.
 
@@ -1482,7 +1482,7 @@ Questions:
 
 ---
 
-# 20. Decisions Claude Code must not change casually
+# 20. Decisions not to change casually
 
 1. Java owns all assessed algorithms.
 2. The place catalogue is TripWeaver's own (OSM + curated). Google Places API is out of scope; Google Maps appears only as plain navigation links.
