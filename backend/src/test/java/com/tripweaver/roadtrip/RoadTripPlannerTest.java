@@ -314,6 +314,21 @@ class RoadTripPlannerTest {
     }
 
     @Test
+    void aDroppedDetourIsReplacedByTheNextRankedOne() {
+        PlaceSummary closed = add("Sunday Fort", "fort", "heritage", 0.25, 0.02, true);
+        add("Open Beach", "beach", "beach", 0.40, -0.03, true);
+        // Only one detour allowed: the fort takes it, is closed on Monday 2026-12-14, and frees the slot.
+        RoadTrip r = RoadTripPlanner.plan(
+                places,
+                towns,
+                id -> id.equals(closed.id()) ? new PlaceHours("Su 10:00-17:00", "VERIFIED") : null,
+                travel,
+                request("\"interests\":{\"heritage\":5,\"beach\":1},\"maxDrivingHoursPerDay\":12,"
+                        + "\"dayEnd\":\"23:00\",\"maxDetours\":1,\"maxDetourMinutes\":40"));
+        assertEquals(List.of("Open Beach"), names(r, "DETOUR"), r.warnings().toString());
+    }
+
+    @Test
     void impossibleArrivalTimeIsInfeasibleWithTheEstimate() {
         ApiException e = fails("\"arriveBy\":\"2026-12-14T10:00\",\"maxDrivingHoursPerDay\":12,\"dayEnd\":\"23:00\"");
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, e.status());

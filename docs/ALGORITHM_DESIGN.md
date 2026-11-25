@@ -262,7 +262,7 @@ Tests cover: each stop visited once, the closed tour returning to base, MST ≤ 
    - **Driving:** in chunks of at most `maxContinuousDrivingMinutes`, separated by rest breaks; lunch is inserted at 12:30 or at the next stop.
    - **Stops:** visits are checked against parsed opening hours. Waypoint stays and user overnight stops are applied.
    - **Leg that does not fit:** when the next leg would exceed the daily driving limit or the day end, the planner picks the place to stay that fits today and minimises the remaining driving. If none exists, the day is impossible.
-7. **Repair.** The plan without detours must be feasible. Detours are then dropped, lowest ranked first, while the plan fails or needs more days than the plan without detours.
+7. **Repair.** The plan without detours must be feasible. While the plan fails or needs more days than the plan without detours, the detour that failed (else the lowest-ranked one) is rejected and detours are re-selected without it, so the next-ranked candidate can take the freed slot.
 
 **Limits:**
 - Roadside rest and lunch locations are approximate.

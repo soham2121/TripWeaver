@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -54,8 +55,9 @@ import org.springframework.http.HttpStatus;
  *       visits, waypoint stays, user overnight waypoints, and suggested overnight stops (OSM-listed accommodation
  *       near the route that makes the most progress within the day's driving and time limits). With {@code
  *       drivingDays}, town stays split the direct drive evenly first (see {@code planStays}).
- *   <li>Repair: detours are optional, so the lowest-ranked detour is dropped while the plan is infeasible or needs
- *       more days than the plan without detours. The plan without detours must itself be feasible, otherwise the
+ *   <li>Repair: detours are optional, so while the plan is infeasible or needs more days than the plan without
+ *       detours, the detour that failed (else the lowest-ranked one) is rejected and detours are re-selected
+ *       without it, so the next-ranked candidate can take its place. Each round rejects one candidate, so it ends. The plan without detours must itself be feasible, otherwise the
  *       trip is infeasible with reasons.
  * </ol>
  *
@@ -339,13 +341,14 @@ public final class RoadTripPlanner {
             }
 
             if (splitDays()) planStays();
-            List<Node> chosen = selectDetours();
+            List<Node> chosen = selectDetours(Set.of());
             Sim base = simulate(List.of());
             if (!base.ok()) {
                 Map<String, Object> extra = base.arrival() == null ? null : Map.of("estimatedArrival", base.arrival());
                 throw infeasible(List.of(base.conflict()), base.relaxations(), extra);
             }
             Sim res = simulate(chosen);
+            Set<Node> rejected = new HashSet<>();
             while (!chosen.isEmpty()
                     && (!res.ok() || res.days().size() > base.days().size())) {
                 // Drop the detour that failed; otherwise (late arrival, extra day) the least valuable one.
@@ -357,8 +360,9 @@ public final class RoadTripPlanner {
                                 .orElseThrow();
                 String why = !res.ok() ? res.conflict() : "it would add a driving day";
                 warnings.add("Detour " + drop.name + " dropped: " + why);
-                chosen = new ArrayList<>(chosen);
-                chosen.remove(drop);
+                // Re-select without it, so the freed slot and time go to the next-ranked candidate.
+                rejected.add(drop);
+                chosen = selectDetours(rejected);
                 res = simulate(chosen);
             }
             if (!res.ok()) res = base;
@@ -639,8 +643,11 @@ public final class RoadTripPlanner {
                     .count();
         }
 
-        /** Rank order; each detour within its own limit, the set within count and total-time limits. */
-        List<Node> selectDetours() {
+        /**
+         * Rank order, skipping {@code rejected}; each detour within its own limit, the set within count and
+         * total-time limits.
+         */
+        List<Node> selectDetours(Set<Node> rejected) {
             List<Node> all = new ArrayList<>();
             segs.forEach(s -> all.addAll(s.candidates));
             all.sort(Comparator.comparingDouble((Node n) -> -n.value)
@@ -649,6 +656,7 @@ public final class RoadTripPlanner {
             int total = 0;
             for (Node n : all) {
                 if (chosen.size() >= req.maxDetours()) break;
+                if (rejected.contains(n)) continue;
                 if (n.added > req.maxDetourMinutes()) continue;
                 if (total + n.added + n.visit > req.maxTotalDetourMinutes()) continue;
                 chosen.add(n);
