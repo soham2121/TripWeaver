@@ -80,13 +80,16 @@ export const PLAN_DEMOS: (Demo & { form: Partial<PlanForm> })[] = [
   {
     id: 'old-goa-heritage',
     title: 'Old Goa heritage day',
-    description: 'One relaxed day from Panaji: churches, forts and museums by taxi.',
+    description:
+      'One relaxed day from Panaji: churches, forts and museums by taxi, on a ₹3,000 per-person budget.',
     form: {
       weights: { heritage: 5, spiritual: 3, culture: 3 },
       base: { name: 'Panaji', lat: 15.4989, lon: 73.8278 },
       days: 1,
       pace: 'RELAXED',
       transport: 'TAXI',
+      budgetAmount: '3000',
+      foodPerPersonPerDay: '600',
     },
   },
   {

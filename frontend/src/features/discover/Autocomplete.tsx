@@ -30,6 +30,8 @@ export function Autocomplete({
 }: Props) {
   const dests = destinations.join(',')
   const [items, setItems] = useState<Suggestion[]>([])
+  /** Shown when there are no suggestions to list, so a slow or failed search is not silent. */
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const listId = useId()
@@ -38,10 +40,12 @@ export function Autocomplete({
     const q = value.trim()
     if (q.length < 2) {
       setItems([])
+      setStatus('idle')
       return
     }
     let live = true
     const t = setTimeout(() => {
+      setStatus('loading')
       Promise.all([
         towns ? placesApi.towns(q).catch(() => []) : Promise.resolve([]),
         ...dests.split(',').map((d) => placesApi.autocomplete(q, 8, d)),
@@ -54,8 +58,16 @@ export function Autocomplete({
               (x, i, a) => a.findIndex((y) => y.type === x.type && y.value === x.value) === i,
             ),
         )
-        .then((r) => live && setItems(r))
-        .catch(() => live && setItems([]))
+        .then((r) => {
+          if (!live) return
+          setItems(r)
+          setStatus('done')
+        })
+        .catch(() => {
+          if (!live) return
+          setItems([])
+          setStatus('error')
+        })
     }, 150)
     return () => {
       live = false
@@ -120,6 +132,15 @@ export function Autocomplete({
             </li>
           ))}
         </ul>
+      )}
+      {open && items.length === 0 && status !== 'idle' && (
+        <p role="status" className="absolute z-20 mt-1 w-full card px-3 py-2 text-sm text-zinc-500">
+          {status === 'loading'
+            ? 'Searching… the server can take up to a minute to wake up.'
+            : status === 'error'
+              ? 'Search is unavailable right now. Type again to retry.'
+              : 'No matches.'}
+        </p>
       )}
     </div>
   )

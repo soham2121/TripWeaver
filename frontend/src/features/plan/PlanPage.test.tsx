@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mockApi } from '../../test/mockApi'
 import { itineraryResponse } from '../../test/planFixtures'
 import { AuthContext } from '../auth/auth'
+import { PLAN_DEMOS } from '../demos'
 import { PlanPage } from './PlanPage'
 
 const mapProps: { points: unknown[]; line?: unknown[] }[] = []
@@ -207,6 +208,10 @@ test('shows infeasible-plan conflicts and relaxations', async () => {
   await userEvent.click(screen.getByRole('button', { name: /generate plan/i }))
   expect(await screen.findByText(/Museum cannot fit/)).toBeInTheDocument()
   expect(screen.getByText(/Add a day/)).toBeInTheDocument()
+})
+
+test('every demo has a budget, so Generate shows after it loads', () => {
+  for (const d of PLAN_DEMOS) expect(Number(d.form.budgetAmount), d.id).toBeGreaterThan(0)
 })
 
 test('generate appears only after all three steps are filled in', async () => {

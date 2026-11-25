@@ -50,6 +50,31 @@ test('lists places and never shows unknown cost as zero', async () => {
   expect(list.textContent).not.toMatch(/₹0/)
 })
 
+test('autocomplete says when the search is slow, failed or found nothing', async () => {
+  let release = () => {}
+  let reply: () => Response = () => new Response('[]')
+  mockApi([
+    [/\/destinations$/, () => [goa]],
+    [
+      /\/places\/autocomplete/,
+      () => new Promise<Response>((done) => (release = () => done(reply()))),
+    ],
+    [/\/places\/search/, () => ({ items: [], limit: 30, offset: 0, hasMore: false })],
+  ])
+  render(<DiscoverPage />)
+  const box = screen.getByRole('combobox', { name: 'Search places' })
+  await userEvent.type(box, 'zz')
+  expect(await screen.findByText(/searching/i)).toBeInTheDocument()
+  release()
+  expect(await screen.findByText('No matches.')).toBeInTheDocument()
+
+  reply = () => new Response('{}', { status: 503 })
+  await userEvent.type(box, 'z')
+  await screen.findByText(/searching/i)
+  release()
+  expect(await screen.findByText(/search is unavailable/i)).toBeInTheDocument()
+})
+
 test('autocomplete interest suggestion applies a filter', async () => {
   const fetch = setup()
   render(<DiscoverPage />)
